@@ -9,6 +9,9 @@ let keMarkers = L.markerClusterGroup({
 let qidMarkers = L.layerGroup();
 let keData = [];
 let loadedQidClusters = new Set(); // Hangi bölgelerin QID'leri yüklendiğini takip et
+let activeKEMarker = null; // Aktif KE marker
+let searchCircle = null; // 1 km arama çemberi
+let currentSearchRadius = 1000; // Metre cinsinden (varsayılan 1 km)
 
 // Haritayı başlat
 function initMap() {
@@ -31,6 +34,24 @@ function initMap() {
 
 // Excel dosyasını yükle ve işle
 document.getElementById('excelFile').addEventListener('change', handleFileUpload);
+
+// Arama yarıçapı kontrolü
+const radiusSlider = document.getElementById('searchRadius');
+const radiusValue = document.getElementById('radiusValue');
+
+radiusSlider.addEventListener('input', (e) => {
+    const kmValue = parseFloat(e.target.value);
+    currentSearchRadius = kmValue * 1000; // km'yi metre'ye çevir
+    radiusValue.textContent = `${kmValue} km`;
+    
+    // Eğer aktif bir marker varsa, çemberi güncelle
+    if (activeKEMarker && activeKEMarker.keItem) {
+        const item = activeKEMarker.keItem;
+        showSearchCircle(item.lat, item.lng, currentSearchRadius);
+        // QID'leri de yeniden sorgula
+        queryNearbyQids(item.lat, item.lng, currentSearchRadius, item.keId);
+    }
+});
 
 function handleFileUpload(e) {
     const file = e.target.files[0];
@@ -125,7 +146,14 @@ function addKEMarker(item) {
         fillOpacity: 0.8
     });
     
-    marker.on('click', () => showKEInfo(item));
+    // Marker'a item referansını ekle
+    marker.keItem = item;
+    
+    marker.on('click', () => {
+        showKEInfo(item);
+        setActiveKEMarker(marker);
+        showSearchCircle(item.lat, item.lng, currentSearchRadius);
+    });
     
     // Tooltip ekle
     marker.bindTooltip(`${item.keId}: ${item.baslik || 'İsimsiz'}`, {
@@ -141,10 +169,11 @@ function showKEInfo(item) {
     const panel = document.getElementById('infoPanel');
     panel.style.display = 'block';
     
+    const baslik = item.baslik || 'İsimsiz Yapı';
+    
     let html = `
-        <h3>Kültür Envanteri Detayları</h3>
+        <h2 class="copyable" data-copy="${baslik}" title="Kopyalamak için tıklayın">${baslik}</h2>
         <p><span class="label">KE ID:</span> <span class="copyable" data-copy="${item.keId || ''}" title="Kopyalamak için tıklayın">${item.keId || '-'}</span></p>
-        <p><span class="label">Başlık:</span> <span class="copyable" data-copy="${item.baslik || ''}" title="Kopyalamak için tıklayın">${item.baslik || '-'}</span></p>
         ${item.turler ? `<p><span class="label">Türler:</span> <span class="copyable" data-copy="${item.turler}" title="Kopyalamak için tıklayın">${item.turler}</span></p>` : ''}
         ${item.vikidata ? `<p><span class="label">Wikidata:</span> <a href="https://www.wikidata.org/wiki/${item.vikidata}" target="_blank" class="copyable" data-copy="${item.vikidata}" title="Kopyalamak için tıklayın">${item.vikidata}</a></p>` : ''}
         ${item.il ? `<p><span class="label">İl:</span> <span class="copyable" data-copy="${item.il}" title="Kopyalamak için tıklayın">${item.il}</span></p>` : ''}
@@ -166,7 +195,7 @@ function showKEInfo(item) {
     attachCopyListeners();
     
     // Yakındaki QID'leri sorgula
-    queryNearbyQids(item.lat, item.lng, 1000, item.keId); // KE ID'yi de gönder
+    queryNearbyQids(item.lat, item.lng, currentSearchRadius, item.keId); // KE ID'yi de gönder
 }
 
 // Harita hareket ettiğinde tetiklenir
@@ -347,13 +376,15 @@ function displayNearbyQids(results, keId) {
         const distance = result.distance ? 
             `${(parseFloat(result.distance.value)).toFixed(0)}m` : '';
         
-        // KE ID ekleme URL'i oluştur
-        const addKeUrl = `https://www.wikidata.org/wiki/${qid}?action=add-statement&property=P11729&value=${encodeURIComponent(keId || '')}`;
+        // QuickStatements URL'i - P11729 (KE ID) eklemek için
+        // Format: https://quickstatements.toolforge.org/#/v1=QID||P11729||"VALUE"
+        const addKeUrl = keId ? 
+            `https://quickstatements.toolforge.org/#/v1=${qid}||P11729||"${keId}"` : '';
         
         html += `
             <div class="qid-item" data-qid="${qid}">
                 <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" class="copyable" data-copy="${qid}" title="QID'yi kopyalamak için tıklayın">${qid}</a>
-                ${keId ? `<a href="${addKeUrl}" target="_blank" class="add-ke-button" title="KE ID ekle">+ KE ID</a>` : ''}
+                ${keId ? `<a href="${addKeUrl}" target="_blank" class="add-ke-button" title="QuickStatements ile KE ID ekle">+ KE ID</a>` : ''}
                 - ${label}
                 ${distance ? `<br><small style="color: #666;">Uzaklık: ${distance}</small>` : ''}
             </div>
@@ -403,16 +434,56 @@ map.on('click', (e) => {
 // Escape tuşu ile panel'i kapat
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        document.getElementById('infoPanel').style.display = 'none';
+        closeInfoPanel();
     }
 });
 
+// Panel'i kapat ve temizlik yap
+function closeInfoPanel() {
+    document.getElementById('infoPanel').style.display = 'none';
+    
+    // Aktif marker'ı normale döndür
+    if (activeKEMarker) {
+        activeKEMarker.setStyle({
+            radius: 8,
+            fillColor: '#e74c3c',
+            color: '#c0392b',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        });
+        
+        const markerElement = activeKEMarker.getElement();
+        if (markerElement) {
+            markerElement.classList.remove('active-ke-marker');
+        }
+        
+        activeKEMarker = null;
+    }
+    
+    // Arama çemberini kaldır
+    if (searchCircle) {
+        map.removeLayer(searchCircle);
+        searchCircle = null;
+    }
+}
+
 // Panoya kopyalama fonksiyonu
-function copyToClipboard(text) {
+function copyToClipboard(text, element) {
     if (!text) return;
     
+    const originalText = element.textContent;
+    
     navigator.clipboard.writeText(text).then(() => {
-        showCopyNotification(`Kopyalandı: ${text}`);
+        // Elementi "Kopyalandı" olarak değiştir
+        element.textContent = 'Kopyalandı ✓';
+        element.classList.add('copied');
+        
+        // 1 saniye sonra eski haline döndür
+        setTimeout(() => {
+            element.textContent = originalText;
+            element.classList.remove('copied');
+        }, 1000);
     }).catch(err => {
         console.error('Kopyalama hatası:', err);
         // Fallback method
@@ -425,7 +496,12 @@ function copyToClipboard(text) {
         textArea.select();
         try {
             document.execCommand('copy');
-            showCopyNotification(`Kopyalandı: ${text}`);
+            element.textContent = 'Kopyalandı ✓';
+            element.classList.add('copied');
+            setTimeout(() => {
+                element.textContent = originalText;
+                element.classList.remove('copied');
+            }, 1000);
         } catch (err) {
             console.error('Fallback kopyalama hatası:', err);
         }
@@ -433,28 +509,22 @@ function copyToClipboard(text) {
     });
 }
 
-// Kopyalama bildirimi göster
-function showCopyNotification(message) {
-    const notification = document.createElement('div');
-    notification.className = 'copy-notification';
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        document.body.removeChild(notification);
-    }, 1500);
-}
-
 // Kopyalama event listener'larını ekle
 function attachCopyListeners() {
     const copyables = document.querySelectorAll('.copyable');
     copyables.forEach(element => {
+        // Önceki listener'ı kaldır
+        element.replaceWith(element.cloneNode(true));
+    });
+    
+    // Yeni listener'ları ekle
+    document.querySelectorAll('.copyable').forEach(element => {
         element.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             const textToCopy = element.getAttribute('data-copy');
             if (textToCopy) {
-                copyToClipboard(textToCopy);
+                copyToClipboard(textToCopy, element);
             }
         });
     });
@@ -502,4 +572,57 @@ function highlightQidMarker(qid, highlight) {
             }
         }
     });
+}
+
+// Aktif KE marker'ı ayarla
+function setActiveKEMarker(marker) {
+    // Önceki aktif marker'ı normale döndür
+    if (activeKEMarker) {
+        activeKEMarker.setStyle({
+            radius: 8,
+            fillColor: '#e74c3c',
+            color: '#c0392b',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        });
+    }
+    
+    // Yeni marker'ı aktif yap
+    activeKEMarker = marker;
+    marker.setStyle({
+        radius: 12,
+        fillColor: '#ff6b6b',
+        color: '#ff0000',
+        weight: 4,
+        opacity: 1,
+        fillOpacity: 1
+    });
+    
+    // Pulse animasyonu için class ekle
+    const markerElement = marker.getElement();
+    if (markerElement) {
+        markerElement.classList.add('active-ke-marker');
+    }
+}
+
+// Arama çemberini göster
+function showSearchCircle(lat, lng, radiusMeters) {
+    // Önceki çemberi kaldır
+    if (searchCircle) {
+        map.removeLayer(searchCircle);
+    }
+    
+    // Yeni çember oluştur
+    searchCircle = L.circle([lat, lng], {
+        radius: radiusMeters,
+        color: '#e74c3c',
+        fillColor: '#e74c3c',
+        fillOpacity: 0.05,
+        weight: 2,
+        opacity: 0.6,
+        dashArray: '10, 10'
+    });
+    
+    searchCircle.addTo(map);
 }
