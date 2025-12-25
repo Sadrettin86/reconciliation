@@ -3,7 +3,7 @@ let map;
 let keMarkers = L.markerClusterGroup({
     spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
+    zoomToBoundsOnClick: false, // Tıklayınca zoom yapma
     maxClusterRadius: 50
 });
 let qidMarkers = L.layerGroup();
@@ -149,7 +149,8 @@ function addKEMarker(item) {
     // Marker'a item referansını ekle
     marker.keItem = item;
     
-    marker.on('click', () => {
+    marker.on('click', (e) => {
+        L.DomEvent.stopPropagation(e); // Harita click event'ini durdur
         showKEInfo(item);
         setActiveKEMarker(marker);
         showSearchCircle(item.lat, item.lng, currentSearchRadius);
@@ -336,6 +337,11 @@ function addQidMarkers(results) {
                 
                 marker.qid = qid;
                 
+                // Click event'i durdur - panel kapanmasın
+                marker.on('click', (e) => {
+                    L.DomEvent.stopPropagation(e);
+                });
+                
                 let popupContent = `
                     <strong>${label}</strong><br>
                     <a href="https://www.wikidata.org/wiki/${qid}" target="_blank">${qid}</a>
@@ -420,14 +426,15 @@ initMap();
 
 // Info panel'i kapatmak için haritaya tıklama
 map.on('click', (e) => {
-    if (e.originalEvent.target.closest('.leaflet-marker-icon, .leaflet-popup')) {
-        return; // Marker'a tıklandıysa panel'i kapatma
+    // Marker'a veya popup'a tıklanmışsa işlem yapma
+    if (e.originalEvent.target.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-interactive')) {
+        return;
     }
+    
     // Panel açıksa ve haritanın boş bir yerine tıklandıysa kapat
     const panel = document.getElementById('infoPanel');
     if (panel.style.display === 'block') {
-        // Sadece Escape tuşu ile kapatmak için bu satırı kaldırabilirsiniz
-        // panel.style.display = 'none';
+        closeInfoPanel();
     }
 });
 
@@ -621,7 +628,8 @@ function showSearchCircle(lat, lng, radiusMeters) {
         fillOpacity: 0.05,
         weight: 2,
         opacity: 0.6,
-        dashArray: '10, 10'
+        dashArray: '10, 10',
+        interactive: false // Tıklanamaz yap
     });
     
     searchCircle.addTo(map);
