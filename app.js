@@ -382,15 +382,10 @@ function displayNearbyQids(results, keId) {
         const distance = result.distance ? 
             `${(parseFloat(result.distance.value)).toFixed(0)}m` : '';
         
-        // QuickStatements URL'i - P11729 (KE ID) eklemek için
-        // Format: https://quickstatements.toolforge.org/#/v1=QID||P11729||"VALUE"
-        const addKeUrl = keId ? 
-            `https://quickstatements.toolforge.org/#/v1=${qid}||P11729||"${keId}"` : '';
-        
         html += `
             <div class="qid-item" data-qid="${qid}">
                 <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" class="copyable" data-copy="${qid}" title="QID'yi kopyalamak için tıklayın">${qid}</a>
-                ${keId ? `<a href="${addKeUrl}" target="_blank" class="add-ke-button" title="QuickStatements ile KE ID ekle">+ KE ID</a>` : ''}
+                ${keId ? `<a href="javascript:void(0);" onclick="openWikidataModal('${qid}', '${keId}')" class="add-ke-button" title="Wikidata'da KE ID ekle">+ KE ID</a>` : ''}
                 - ${label}
                 ${distance ? `<br><small style="color: #666;">Uzaklık: ${distance}</small>` : ''}
             </div>
@@ -438,13 +433,6 @@ map.on('click', (e) => {
     }
 });
 
-// Escape tuşu ile panel'i kapat
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        closeInfoPanel();
-    }
-});
-
 // Panel'i kapat ve temizlik yap
 function closeInfoPanel() {
     document.getElementById('infoPanel').style.display = 'none';
@@ -475,6 +463,57 @@ function closeInfoPanel() {
         searchCircle = null;
     }
 }
+
+// Wikidata modal'ı aç
+let currentWikidataQid = null;
+
+function openWikidataModal(qid, keId) {
+    currentWikidataQid = qid;
+    
+    // Modal'ı göster
+    const modal = document.getElementById('wikidataModal');
+    modal.classList.add('active');
+    
+    // KE ID değerini göster
+    document.getElementById('modalKeValue').textContent = keId;
+    
+    // Wikidata butonunu ayarla
+    const btn = document.getElementById('openWikidataBtn');
+    btn.onclick = () => {
+        window.open(`https://www.wikidata.org/wiki/${qid}`, '_blank');
+        // Modal'ı kapat
+        setTimeout(() => {
+            closeWikidataModal();
+        }, 500);
+    };
+}
+
+// Wikidata modal'ı kapat
+function closeWikidataModal() {
+    const modal = document.getElementById('wikidataModal');
+    modal.classList.remove('active');
+    currentWikidataQid = null;
+}
+
+// Modal dışına tıklayınca kapat
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('wikidataModal');
+    if (e.target === modal) {
+        closeWikidataModal();
+    }
+});
+
+// ESC ile modal'ı da kapat
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('wikidataModal');
+        if (modal.classList.contains('active')) {
+            closeWikidataModal();
+        } else {
+            closeInfoPanel();
+        }
+    }
+});
 
 // Panoya kopyalama fonksiyonu
 function copyToClipboard(text, element) {
