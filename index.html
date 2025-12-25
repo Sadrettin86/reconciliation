@@ -248,6 +248,105 @@
             background: #45a049;
             text-decoration: none;
         }
+        
+        .wikidata-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .wikidata-modal.active {
+            display: flex;
+        }
+        
+        .wikidata-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .wikidata-modal-content h3 {
+            margin: 0 0 20px 0;
+            color: #2c3e50;
+            font-size: 20px;
+        }
+        
+        .wikidata-modal-content p {
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+        
+        .wikidata-steps {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .wikidata-steps ol {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        
+        .wikidata-steps li {
+            margin: 8px 0;
+        }
+        
+        .wikidata-value {
+            background: #e3f2fd;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #1565c0;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+        
+        .modal-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .modal-button.primary {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .modal-button.primary:hover {
+            background: #45a049;
+        }
+        
+        .modal-button.secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .modal-button.secondary:hover {
+            background: #d0d0d0;
+        }
     </style>
 </head>
 <body>
@@ -286,6 +385,30 @@
     </div>
     
     <div id="infoPanel" class="info-panel" style="display: none;"></div>
+    
+    <!-- Wikidata Modal -->
+    <div id="wikidataModal" class="wikidata-modal">
+        <div class="wikidata-modal-content">
+            <h3>🔗 Wikidata'ya KE ID Ekle</h3>
+            <p>Bu Wikidata öğesine <strong>P11729 (Kültür Envanteri ID)</strong> eklemek için:</p>
+            
+            <div class="wikidata-steps">
+                <ol>
+                    <li>Aşağıdaki butona tıklayın</li>
+                    <li>Wikidata sayfası yeni sekmede açılacak</li>
+                    <li>"<strong>Add statement</strong>" butonuna tıklayın</li>
+                    <li>"<strong>Property</strong>" alanına: <span class="wikidata-value">P11729</span> yazın</li>
+                    <li>"<strong>Value</strong>" alanına: <span class="wikidata-value" id="modalKeValue"></span> yazın</li>
+                    <li>"<strong>Publish</strong>" butonuna tıklayın ✅</li>
+                </ol>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="modal-button secondary" onclick="closeWikidataModal()">İptal</button>
+                <button class="modal-button primary" id="openWikidataBtn">Wikidata'yı Aç</button>
+            </div>
+        </div>
+    </div>
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
