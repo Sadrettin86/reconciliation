@@ -3,7 +3,7 @@ let map;
 let keMarkers = L.markerClusterGroup({
     spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
-    zoomToBoundsOnClick: false, // Tıklayınca zoom yapma
+    zoomToBoundsOnClick: true, // Cluster'a tıklayınca zoom yapsın
     maxClusterRadius: 50
 });
 let qidMarkers = L.layerGroup();
@@ -463,6 +463,7 @@ function closeInfoPanel() {
         const markerElement = activeKEMarker.getElement();
         if (markerElement) {
             markerElement.classList.remove('active-ke-marker');
+            markerElement.style.filter = ''; // Filter'ı temizle
         }
         
         activeKEMarker = null;
@@ -593,9 +594,15 @@ function setActiveKEMarker(marker) {
             opacity: 1,
             fillOpacity: 0.8
         });
+        
+        const oldElement = activeKEMarker.getElement();
+        if (oldElement) {
+            oldElement.classList.remove('active-ke-marker');
+            oldElement.style.filter = '';
+        }
     }
     
-    // Yeni marker'ı aktif yap
+    // Yeni marker'ı aktif yap - sadece stil değişikliği, animasyon yok
     activeKEMarker = marker;
     marker.setStyle({
         radius: 12,
@@ -606,10 +613,10 @@ function setActiveKEMarker(marker) {
         fillOpacity: 1
     });
     
-    // Pulse animasyonu için class ekle
+    // Glow efekti ekle
     const markerElement = marker.getElement();
     if (markerElement) {
-        markerElement.classList.add('active-ke-marker');
+        markerElement.style.filter = 'drop-shadow(0 0 8px #ff0000)';
     }
 }
 
