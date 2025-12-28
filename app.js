@@ -629,6 +629,9 @@ function displayQIDList(results) {
     Promise.all(qidPromises).then(qidList => {
         const validQids = qidList.filter(q => q !== null);
         
+        // Mesafeye göre sırala (yakından uzağa)
+        validQids.sort((a, b) => a.distance - b.distance);
+        
         let html = `<div class="qid-list">`;
         
         validQids.forEach(q => {
@@ -667,8 +670,8 @@ function highlightQIDMarker(qid) {
         if (marker.qid === qid) {
             const highlighted = L.divIcon({
                 className: 'qid-marker marker-highlight',
-                html: `<div style="background: #9b59b6; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(155,89,182,0.8);"></div>`,
-                iconSize: [16, 16]
+                html: `<div style="background: #f1c40f; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 12px rgba(241, 196, 15, 0.8);"></div>`,
+                iconSize: [24, 24]
             });
             marker.setIcon(highlighted);
             highlightedQID = marker;
@@ -680,8 +683,8 @@ function unhighlightQIDMarker() {
     if (highlightedQID) {
         const normal = L.divIcon({
             className: 'qid-marker',
-            html: `<div style="background: #9b59b6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-            iconSize: [12, 12]
+            html: `<div style="background: #f1c40f; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [20, 20]
         });
         highlightedQID.setIcon(normal);
         highlightedQID = null;
@@ -701,17 +704,23 @@ function updateMarkerColor(marker, matched, active = false) {
         color = '#e74c3c'; // Kırmızı
     }
     
-    // Aktif ise siyah kalın kenarlık ve daha büyük
-    const borderStyle = active ? 'border: 3px solid #000;' : 'border: 2px solid white;';
-    const size = active ? 22 : 20;
-    
-    const icon = L.divIcon({
-        className: 'ke-marker',
-        html: `<div style="background: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%; ${borderStyle} box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>`,
-        iconSize: [size, size]
-    });
-    
-    marker.setIcon(icon);
+    if (active) {
+        // Aktif: Kare (rounded corners) + siyah kenarlık + daha büyük
+        const icon = L.divIcon({
+            className: 'ke-marker',
+            html: `<div style="background: ${color}; width: 28px; height: 28px; border-radius: 6px; border: 3px solid #000; box-shadow: 0 4px 8px rgba(0,0,0,0.5);"></div>`,
+            iconSize: [28, 28]
+        });
+        marker.setIcon(icon);
+    } else {
+        // Normal: Yuvarlak
+        const icon = L.divIcon({
+            className: 'ke-marker',
+            html: `<div style="background: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [20, 20]
+        });
+        marker.setIcon(icon);
+    }
 }
 
 function showSearchCircle(lat, lng, radius) {
@@ -777,8 +786,8 @@ function displayQIDMarkers(results) {
             
             const icon = L.divIcon({
                 className: 'qid-marker',
-                html: `<div style="background: #9b59b6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-                iconSize: [12, 12]
+                html: `<div style="background: #f1c40f; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [20, 20]
             });
             
             const marker = L.marker([lat, lng], { icon: icon });
