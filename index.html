@@ -372,6 +372,149 @@
             color: #7f8c8d;
             margin-top: 2px;
         }
+        
+        /* Yapılanlar Modal */
+        .activities-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10001;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .activities-modal.active {
+            display: flex;
+        }
+        
+        .activities-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .activities-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 16px 16px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .activities-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .close-activities {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-activities:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .activities-body {
+            padding: 30px;
+        }
+        
+        .activities-section {
+            margin-bottom: 30px;
+        }
+        
+        .activities-section h3 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .user-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        .user-item:nth-child(2) { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .user-item:nth-child(3) { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .user-item:nth-child(4) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        
+        .user-name {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+        
+        .user-score {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        
+        .user-total {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .user-breakdown {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+        
+        .activity-item {
+            padding: 12px 15px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+        
+        .activity-user {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .activity-action {
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+        
+        .activity-time {
+            color: #95a5a6;
+            font-size: 11px;
+        }
     </style>
 </head>
 <body>
@@ -419,6 +562,11 @@
         <div class="stat-item">
             <div class="stat-value" id="newItemPoints" style="color: #3498db;">-</div>
             <div class="stat-label">Yeni Öğe</div>
+        </div>
+        <div class="stat-item">
+            <button onclick="showActivities()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                📊 Yapılanlar
+            </button>
         </div>
     </div>
     
@@ -468,6 +616,21 @@
         </div>
     </div>
     
+    <!-- Yapılanlar Modal -->
+    <div id="activitiesModal" class="activities-modal">
+        <div class="activities-content">
+            <div class="activities-header">
+                <h2>📊 Yapılanlar</h2>
+                <button class="close-activities" onclick="closeActivities()">✕</button>
+            </div>
+            <div class="activities-body" id="activitiesBody">
+                <div style="text-align: center; padding: 40px; color: #95a5a6;">
+                    ⏳ Yükleniyor...
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
@@ -476,6 +639,27 @@
     
     <!-- SheetJS for Excel parsing -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- Firebase Config -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBHPlZE6MYL17dxVK4rqDYDwMrmp7lFe_E",
+            authDomain: "keharita-e3a4d.firebaseapp.com",
+            databaseURL: "https://keharita-e3a4d-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "keharita-e3a4d",
+            storageBucket: "keharita-e3a4d.firebasestorage.app",
+            messagingSenderId: "1012995264102",
+            appId: "1:1012995264102:web:6b2fb69c9b083426b467a7"
+        };
+        
+        // Firebase başlat
+        firebase.initializeApp(firebaseConfig);
+        console.log('🔥 Firebase başlatıldı');
+    </script>
     
     <!-- KE Encoded Data -->
     <script src="data.js"></script>
