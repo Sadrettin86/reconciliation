@@ -2,12 +2,7 @@
 // GLOBAL DEĞİŞKENLER
 // ============================================
 let map;
-let keMarkers = L.markerClusterGroup({
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
-    maxClusterRadius: 50
-});
+let keMarkers = L.layerGroup(); // Cluster yerine normal LayerGroup
 let qidMarkers = L.layerGroup();
 let keData = [];
 let loadedQidClusters = new Set();
