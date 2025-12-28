@@ -2,7 +2,20 @@
 // GLOBAL DEĞİŞKENLER
 // ============================================
 let map;
-let keMarkers = L.layerGroup(); // Cluster yerine normal LayerGroup
+let keMarkers = L.markerClusterGroup({
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    maxClusterRadius: 50,
+    iconCreateFunction: function(cluster) {
+        // Tek renk cluster - hafif kırmızı
+        return L.divIcon({
+            html: '<div style="background: rgba(231, 76, 60, 0.6); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"><span style="color: white; font-weight: bold; font-size: 14px;">' + cluster.getChildCount() + '</span></div>',
+            className: 'custom-cluster-icon',
+            iconSize: L.point(40, 40)
+        });
+    }
+});
 let qidMarkers = L.layerGroup();
 let keData = [];
 let loadedQidClusters = new Set();
