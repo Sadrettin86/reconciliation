@@ -1,795 +1,594 @@
-// ============================================
-// GLOBAL DEĞİŞKENLER
-// ============================================
-let map;
-let keMarkers = L.markerClusterGroup({
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
-    maxClusterRadius: 50
-});
-let qidMarkers = L.layerGroup();
-let keData = [];
-let loadedQidClusters = new Set();
-let activeKEMarker = null;
-let searchCircle = null;
-let currentSearchRadius = 1000; // Metre
-let currentUser = null;
-
-// Firebase database referansı
-const database = firebase.database();
-
-// ============================================
-// KULLANICI YÖNETİMİ (Basit - Prompt)
-// ============================================
-
-function getCurrentUser() {
-    if (currentUser) return currentUser;
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kültür Envanteri Harita</title>
     
-    // LocalStorage'dan kontrol et
-    const saved = localStorage.getItem('userName');
-    if (saved) {
-        currentUser = {
-            name: saved,
-            userId: 'user_' + saved.replace(/\s/g, '_').toLowerCase() + '_' + Date.now().toString().slice(-6)
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+        }
+        
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .info-panel h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .info-panel p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .info-panel .label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .info-panel h2 {
+            margin-bottom: 15px;
+            color: #1a237e;
+            font-size: 18px;
+            border-bottom: 2px solid #3f51b5;
+            padding-bottom: 8px;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 60px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .status {
+            font-size: 12px;
+            margin-top: 10px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid #333;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 5px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .qid-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .qid-item {
+            padding: 5px;
+            margin: 3px 0;
+            background: #f8f9fa;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .qid-item a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .qid-item a:hover {
+            text-decoration: underline;
+        }
+        
+        .qid-item.highlighted {
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            padding-left: 7px;
+        }
+        
+        .marker-highlight {
+            animation: pulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.3); }
+        }
+        
+        .add-ke-button {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 8px;
+            background: #4caf50;
+            color: white;
+            border-radius: 3px;
+            font-size: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        .add-ke-button:hover {
+            background: #45a049;
+            text-decoration: none;
+        }
+        
+        .wikidata-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .wikidata-modal.active {
+            display: flex;
+        }
+        
+        .wikidata-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .wikidata-modal-content h3 {
+            margin: 0 0 20px 0;
+            color: #2c3e50;
+            font-size: 20px;
+        }
+        
+        .wikidata-modal-content p {
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+        
+        .wikidata-steps {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .wikidata-steps ol {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        
+        .wikidata-steps li {
+            margin: 8px 0;
+        }
+        
+        .wikidata-value {
+            background: #e3f2fd;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #1565c0;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+        
+        .modal-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .modal-button.primary {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .modal-button.primary:hover {
+            background: #45a049;
+        }
+        
+        .modal-button.secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .modal-button.secondary:hover {
+            background: #d0d0d0;
+        }
+        
+        /* İstatistik Paneli */
+        .stats-panel {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
+        
+        /* Yapılanlar Modal */
+        .activities-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10001;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .activities-modal.active {
+            display: flex;
+        }
+        
+        .activities-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .activities-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 16px 16px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .activities-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .close-activities {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .close-activities:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .activities-body {
+            padding: 30px;
+        }
+        
+        .activities-section {
+            margin-bottom: 30px;
+        }
+        
+        .activities-section h3 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        
+        .user-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+        
+        .user-item:nth-child(2) { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .user-item:nth-child(3) { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .user-item:nth-child(4) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        
+        .user-name {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+        
+        .user-score {
+            text-align: right;
+        }
+        
+        .user-total {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .user-breakdown {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+        
+        .activity-item {
+            padding: 12px 15px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+        
+        .activity-user {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .activity-action {
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+        
+        .activity-time {
+            color: #95a5a6;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="controls">
+        <div style="padding-top: 10px;">
+            <label for="searchRadius" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 5px;">
+                Arama Yarıçapı (km):
+            </label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="range" id="searchRadius" min="0.5" max="2" step="0.1" value="1" 
+                       style="flex: 1;" />
+                <span id="radiusValue" style="font-size: 13px; font-weight: 600; min-width: 45px;">1 km</span>
+            </div>
+        </div>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
+            <button onclick="showActivities()" style="width: 100%; padding: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                📊 Yapılanlar
+            </button>
+        </div>
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
+    
+    <!-- İstatistik Paneli -->
+    <div class="stats-panel">
+        <div class="stat-item">
+            <div class="stat-value" id="totalPoints">-</div>
+            <div class="stat-label">Toplam Nokta</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="matchedPoints" style="color: #27ae60;">-</div>
+            <div class="stat-label">Eşleşmiş</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="unmatchedPoints" style="color: #e74c3c;">-</div>
+            <div class="stat-label">Eşleşmemiş</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="newItemPoints" style="color: #3498db;">-</div>
+            <div class="stat-label">Yeni Öğe</div>
+        </div>
+        <div class="stat-item">
+            <button onclick="showActivities()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                📊 Yapılanlar
+            </button>
+        </div>
+    </div>
+    
+    <div class="legend">
+        <div style="font-weight: 600; margin-bottom: 8px; font-size: 13px;">Lejant</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #e74c3c;"></div>
+            <span>KE (Eşleşmemiş)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #27ae60;"></div>
+            <span>KE (Eşleşmiş)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #3498db;"></div>
+            <span>KE (Yeni Öğe)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #9b59b6;"></div>
+            <span>Wikidata QID</span>
+        </div>
+    </div>
+    
+    <div id="infoPanel" class="info-panel" style="display: none;"></div>
+    
+    <!-- Wikidata Modal -->
+    <div id="wikidataModal" class="wikidata-modal">
+        <div class="wikidata-modal-content">
+            <h3>🔗 Wikidata'ya KE ID Ekle</h3>
+            <p>Bu Wikidata öğesine <strong>P11729 (Kültür Envanteri ID)</strong> eklemek için:</p>
+            
+            <div class="wikidata-steps">
+                <ol>
+                    <li>Aşağıdaki butona tıklayın</li>
+                    <li>Wikidata sayfası yeni sekmede açılacak</li>
+                    <li>"<strong>Add statement</strong>" butonuna tıklayın</li>
+                    <li>"<strong>Property</strong>" alanına: <span class="wikidata-value">P11729</span> yazın</li>
+                    <li>"<strong>Value</strong>" alanına: <span class="wikidata-value" id="modalKeValue"></span> yazın</li>
+                    <li>"<strong>Publish</strong>" butonuna tıklayın ✅</li>
+                </ol>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="modal-button secondary" onclick="closeWikidataModal()">İptal</button>
+                <button class="modal-button primary" id="openWikidataBtn">Wikidata'yı Aç</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Yapılanlar Modal -->
+    <div id="activitiesModal" class="activities-modal">
+        <div class="activities-content">
+            <div class="activities-header">
+                <h2>📊 Yapılanlar</h2>
+                <button class="close-activities" onclick="closeActivities()">✕</button>
+            </div>
+            <div class="activities-body" id="activitiesBody">
+                <div style="text-align: center; padding: 40px; color: #95a5a6;">
+                    ⏳ Yükleniyor...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- Firebase Config -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBHPlZE6MYL17dxVK4rqDYDwMrmp7lFe_E",
+            authDomain: "keharita-e3a4d.firebaseapp.com",
+            databaseURL: "https://keharita-e3a4d-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "keharita-e3a4d",
+            storageBucket: "keharita-e3a4d.firebasestorage.app",
+            messagingSenderId: "1012995264102",
+            appId: "1:1012995264102:web:6b2fb69c9b083426b467a7"
         };
-        console.log(`✅ Kullanıcı: ${currentUser.name}`);
-        return currentUser;
-    }
+        
+        firebase.initializeApp(firebaseConfig);
+        console.log('🔥 Firebase başlatıldı');
+    </script>
     
-    // İlk kullanım - isim sor
-    const name = prompt('👤 Adınızı girin:\n(Yapılanlar listesinde görünecek)');
-    if (!name || name.trim() === '') {
-        return null;
-    }
+    <!-- KE Encoded Data -->
+    <script src="data.js"></script>
     
-    currentUser = {
-        name: name.trim(),
-        userId: 'user_' + name.trim().replace(/\s/g, '_').toLowerCase() + '_' + Date.now().toString().slice(-6)
-    };
-    
-    localStorage.setItem('userName', currentUser.name);
-    console.log(`✅ Yeni kullanıcı: ${currentUser.name}`);
-    
-    return currentUser;
-}
-
-// ============================================
-// HARİTA BAŞLATMA
-// ============================================
-
-function initMap() {
-    map = L.map('map').setView([39.0, 35.0], 6);
-    
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap contributors © CARTO',
-        subdomains: 'abcd',
-        maxZoom: 20
-    }).addTo(map);
-    
-    keMarkers.addTo(map);
-    qidMarkers.addTo(map);
-    
-    map.on('moveend', onMapMoveEnd);
-    
-    // Encoded data yükle
-    loadEncodedData();
-    
-    // Firebase realtime senkronizasyon
-    initRealtimeSync();
-    
-    // Arama yarıçapı slider
-    setupRadiusSlider();
-}
-
-// ============================================
-// FIREBASE İŞLEMLERİ
-// ============================================
-
-function initRealtimeSync() {
-    console.log('🔥 Firebase senkronizasyon başlatılıyor...');
-    
-    // Yeni öğeleri dinle
-    database.ref('newItems').on('value', (snapshot) => {
-        const firebaseData = snapshot.val();
-        
-        if (!firebaseData) {
-            console.log('Henüz yeni öğe yok');
-            updateLastUpdate(0);
-            return;
-        }
-        
-        const newItemIds = Object.keys(firebaseData).map(id => parseInt(id));
-        
-        let updateCount = 0;
-        keData.forEach(item => {
-            const wasNewItem = item.newItem;
-            item.newItem = newItemIds.includes(item.id);
-            
-            if (item.newItem && !wasNewItem) {
-                updateCount++;
-            }
-        });
-        
-        if (updateCount > 0) {
-            console.log(`🔔 ${updateCount} yeni öğe eklendi!`);
-        }
-        
-        displayKEData();
-        updateStats();
-        updateLastUpdate(updateCount);
-    });
-    
-    // Eşleştirmeleri dinle
-    database.ref('matches').on('value', (snapshot) => {
-        const matchData = snapshot.val();
-        
-        if (!matchData) {
-            return;
-        }
-        
-        const matchedIds = Object.keys(matchData).map(id => parseInt(id));
-        
-        let updateCount = 0;
-        keData.forEach(item => {
-            const wasMatched = item.matched;
-            item.matched = matchedIds.includes(item.id);
-            
-            if (item.matched && !wasMatched) {
-                updateCount++;
-            }
-        });
-        
-        if (updateCount > 0) {
-            console.log(`🟢 ${updateCount} yeni eşleştirme!`);
-        }
-        
-        displayKEData();
-        updateStats();
-    });
-}
-
-function updateLastUpdate(count) {
-    const lastUpdateEl = document.getElementById('lastUpdate');
-    if (!lastUpdateEl) return;
-    
-    const now = new Date().toLocaleTimeString('tr-TR');
-    lastUpdateEl.textContent = `Son güncelleme: ${now} 🔥`;
-    lastUpdateEl.style.color = count > 0 ? '#27ae60' : '#95a5a6';
-}
-
-async function markAsNewItem(keId) {
-    const item = keData.find(i => i.id === keId);
-    if (!item) return;
-    
-    // Kullanıcı al
-    const user = getCurrentUser();
-    if (!user) {
-        alert('❌ İşlem iptal edildi');
-        return;
-    }
-    
-    // Firebase'e ekle
-    try {
-        await database.ref('newItems/' + keId).set({
-            keId: keId,
-            timestamp: Date.now(),
-            userName: user.name,
-            userId: user.userId,
-            name: item.name || '',
-            city: item.city || '',
-            district: item.district || ''
-        });
-        
-        // Kullanıcı istatistiklerini güncelle
-        await updateUserStats('newItem');
-        
-        // Yerel güncelleme
-        item.newItem = true;
-        item.matched = false;
-        
-        displayKEData();
-        updateStats();
-        
-        alert(`✅ KE ID ${keId} yeni öğe olarak eklendi!`);
-        
-    } catch (error) {
-        console.error('Firebase hatası:', error);
-        alert('❌ Eklenemedi: ' + error.message);
-    }
-}
-
-async function saveMatch(keId, qid) {
-    const user = getCurrentUser();
-    if (!user) {
-        alert('❌ Eşleştirme yapmak için isim girmelisiniz!');
-        return;
-    }
-    
-    const item = keData.find(i => i.id === keId);
-    if (!item) return;
-    
-    try {
-        await database.ref('matches/' + keId).set({
-            keId: keId,
-            qid: qid,
-            timestamp: Date.now(),
-            userName: user.name,
-            userId: user.userId,
-            name: item.name || ''
-        });
-        
-        await updateUserStats('match');
-        
-        item.matched = true;
-        item.newItem = false;
-        
-        displayKEData();
-        updateStats();
-        
-        console.log(`✅ Eşleştirme kaydedildi: KE ${keId} → ${qid}`);
-        
-    } catch (error) {
-        console.error('Eşleştirme hatası:', error);
-    }
-}
-
-async function updateUserStats(type) {
-    if (!currentUser) return;
-    
-    const userRef = database.ref('users/' + currentUser.userId);
-    const snapshot = await userRef.once('value');
-    const userData = snapshot.val() || {
-        name: currentUser.name,
-        matchCount: 0,
-        newItemCount: 0,
-        totalCount: 0,
-        lastActivity: 0
-    };
-    
-    if (type === 'match') {
-        userData.matchCount++;
-    } else if (type === 'newItem') {
-        userData.newItemCount++;
-    }
-    
-    userData.totalCount++;
-    userData.lastActivity = Date.now();
-    
-    await userRef.set(userData);
-}
-
-// ============================================
-// YAPILANLAR MODAL
-// ============================================
-
-async function showActivities() {
-    const modal = document.getElementById('activitiesModal');
-    const body = document.getElementById('activitiesBody');
-    
-    modal.classList.add('active');
-    body.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">⏳ Yükleniyor...</div>';
-    
-    try {
-        const usersSnapshot = await database.ref('users').once('value');
-        const users = usersSnapshot.val() || {};
-        
-        const sortedUsers = Object.values(users)
-            .sort((a, b) => b.totalCount - a.totalCount)
-            .slice(0, 10);
-        
-        const newItemsSnapshot = await database.ref('newItems').orderByChild('timestamp').limitToLast(10).once('value');
-        const matchesSnapshot = await database.ref('matches').orderByChild('timestamp').limitToLast(10).once('value');
-        
-        const activities = [];
-        
-        newItemsSnapshot.forEach(child => {
-            activities.push({ type: 'new', ...child.val() });
-        });
-        
-        matchesSnapshot.forEach(child => {
-            activities.push({ type: 'match', ...child.val() });
-        });
-        
-        activities.sort((a, b) => b.timestamp - a.timestamp);
-        
-        let html = '<div class="activities-section">';
-        html += '<h3>👥 EN AKTIF KULLANICILAR</h3>';
-        
-        if (sortedUsers.length === 0) {
-            html += '<div style="text-align: center; padding: 20px; color: #95a5a6;">Henüz kullanıcı yok</div>';
-        } else {
-            sortedUsers.forEach((user, index) => {
-                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
-                html += `
-                    <div class="user-item">
-                        <div class="user-name">
-                            ${medal} <span>#${index + 1}</span> <span>${user.name}</span>
-                        </div>
-                        <div class="user-score">
-                            <div class="user-total">${user.totalCount} işlem</div>
-                            <div class="user-breakdown">${user.matchCount} eşleş. + ${user.newItemCount} yeni</div>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-        
-        html += '</div>';
-        
-        html += '<div class="activities-section">';
-        html += '<h3>⏰ SON İŞLEMLER</h3>';
-        
-        if (activities.length === 0) {
-            html += '<div style="text-align: center; padding: 20px; color: #95a5a6;">Henüz işlem yok</div>';
-        } else {
-            activities.slice(0, 10).forEach(activity => {
-                const icon = activity.type === 'match' ? '🟢' : '🔵';
-                const action = activity.type === 'match' 
-                    ? `KE ${activity.keId} → ${activity.qid}` 
-                    : `KE ${activity.keId} yeni öğe`;
-                const timeAgo = getTimeAgo(activity.timestamp);
-                
-                html += `
-                    <div class="activity-item">
-                        <div>
-                            ${icon} <span class="activity-user">${activity.userName}</span>
-                            <div class="activity-action">${action}</div>
-                        </div>
-                        <div class="activity-time">${timeAgo}</div>
-                    </div>
-                `;
-            });
-        }
-        
-        html += '</div>';
-        body.innerHTML = html;
-        
-    } catch (error) {
-        console.error('Yapılanlar yüklenirken hata:', error);
-        body.innerHTML = '<div style="text-align: center; padding: 40px; color: #e74c3c;">❌ Yüklenemedi</div>';
-    }
-}
-
-function closeActivities() {
-    document.getElementById('activitiesModal').classList.remove('active');
-}
-
-function getTimeAgo(timestamp) {
-    const diff = Date.now() - timestamp;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (minutes < 1) return 'Az önce';
-    if (minutes < 60) return `${minutes} dk önce`;
-    if (hours < 24) return `${hours} saat önce`;
-    return `${days} gün önce`;
-}
-
-// ============================================
-// DATA YÜKLEME
-// ============================================
-
-function loadEncodedData() {
-    if (typeof encodedKEData === 'undefined') {
-        console.log('No encoded data found');
-        return;
-    }
-    
-    try {
-        const decoded = atob(encodedKEData);
-        const data = JSON.parse(decoded);
-        
-        console.log(`✅ Loaded ${data.length} points from encoded data`);
-        
-        keData = data.map(point => ({
-            id: point.i,
-            name: point.n || '',
-            type: point.t || '',
-            lat: point.la,
-            lng: point.lo,
-            country: point.c || '',
-            region: point.r || '',
-            city: point.ci || '',
-            district: point.d || '',
-            mahalle: point.m || '',
-            access: point.a || '',
-            matched: false,
-            newItem: false
-        }));
-        
-        displayKEData();
-        updateStats();
-        
-        console.log('Sample data:', keData[0]);
-        
-    } catch (error) {
-        console.error('Error loading encoded data:', error);
-    }
-}
-
-// Excel upload özelliği kaldırıldı (index.html'de input yok)
-// Gerekirse eklenebilir ama şu an data.js kullanıyoruz
-
-// ============================================
-// HARİTA GÖSTERİM
-// ============================================
-
-function displayKEData() {
-    keMarkers.clearLayers();
-    
-    keData.forEach(item => {
-        let color;
-        if (item.newItem) {
-            color = '#3498db'; // Mavi - Yeni öğe
-        } else if (item.matched) {
-            color = '#27ae60'; // Yeşil - Eşleşmiş
-        } else {
-            color = '#e74c3c'; // Kırmızı - Eşleşmemiş
-        }
-        
-        const icon = L.divIcon({
-            className: 'ke-marker',
-            html: `<div style="background: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-            iconSize: [12, 12]
-        });
-        
-        const marker = L.marker([item.lat, item.lng], { icon: icon });
-        
-        const statusBadge = item.newItem 
-            ? '<span style="background: #3498db; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">YENİ ÖĞE</span>'
-            : item.matched 
-            ? '<span style="background: #27ae60; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">EŞLEŞMİŞ</span>'
-            : '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">EŞLEŞMEMİŞ</span>';
-        
-        const popupContent = `
-            <div style="min-width: 200px;">
-                <h3 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 14px; border-bottom: 2px solid #3498db; padding-bottom: 5px;">
-                    ${item.name || 'İsimsiz'}
-                </h3>
-                <div style="margin-bottom: 10px;">${statusBadge}</div>
-                <table style="width: 100%; font-size: 12px;">
-                    <tr><td style="color: #7f8c8d; padding: 2px 0;"><strong>KE ID:</strong></td><td>${item.id}</td></tr>
-                    ${item.type ? `<tr><td style="color: #7f8c8d; padding: 2px 0;"><strong>Tür:</strong></td><td>${item.type}</td></tr>` : ''}
-                    ${item.city ? `<tr><td style="color: #7f8c8d; padding: 2px 0;"><strong>İl:</strong></td><td>${item.city}</td></tr>` : ''}
-                    ${item.district ? `<tr><td style="color: #7f8c8d; padding: 2px 0;"><strong>İlçe:</strong></td><td>${item.district}</td></tr>` : ''}
-                    ${item.mahalle ? `<tr><td style="color: #7f8c8d; padding: 2px 0;"><strong>Mahalle:</strong></td><td>${item.mahalle}</td></tr>` : ''}
-                    ${item.region ? `<tr><td style="color: #7f8c8d; padding: 2px 0;"><strong>Bölge:</strong></td><td>${item.region}</td></tr>` : ''}
-                    ${item.access ? `<tr><td style="color: #7f8c8d; padding: 2px 0;"><strong>Erişim:</strong></td><td>${item.access}</td></tr>` : ''}
-                </table>
-                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ecf0f1;">
-                    <small style="color: #95a5a6;">📍 ${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</small>
-                </div>
-                ${item.newItem ? '' : `
-                <div style="margin-top: 10px;">
-                    <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
-                        ➕ Yeni Öğe Olarak İşaretle
-                    </button>
-                </div>
-                `}
-            </div>
-        `;
-        
-        marker.bindPopup(popupContent);
-        marker.on('click', () => selectKEMarker(marker, item));
-        marker.keItem = item;
-        
-        keMarkers.addLayer(marker);
-    });
-    
-    console.log(`Displayed ${keData.length} KE markers`);
-}
-
-function selectKEMarker(marker, item) {
-    if (activeKEMarker) {
-        updateMarkerColor(activeKEMarker, activeKEMarker.keItem.matched);
-    }
-    
-    activeKEMarker = marker;
-    updateMarkerColor(marker, item.matched, true);
-    
-    showSearchCircle(item.lat, item.lng, currentSearchRadius);
-    loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
-    
-    // Sağ paneli güncelle
-    updateInfoPanel(item);
-    
-    console.log(`Selected KE ${item.id}`);
-}
-
-// Sağ panel içeriğini güncelle
-function updateInfoPanel(item) {
-    const panel = document.getElementById('infoPanel');
-    if (!panel) return;
-    
-    const statusBadge = item.newItem 
-        ? '<span style="background: #3498db; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600;">YENİ ÖĞE</span>'
-        : item.matched 
-        ? '<span style="background: #27ae60; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600;">EŞLEŞMİŞ</span>'
-        : '<span style="background: #e74c3c; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600;">EŞLEŞMEMİŞ</span>';
-    
-    let html = `
-        <h2>📍 ${item.name || 'İsimsiz'}</h2>
-        <div style="margin-bottom: 15px;">${statusBadge}</div>
-        
-        <div class="ke-info">
-            <div class="ke-info-item">
-                <div class="ke-info-label">KE ID:</div>
-                <div class="ke-info-value"><strong>${item.id}</strong></div>
-            </div>
-            ${item.type ? `
-            <div class="ke-info-item">
-                <div class="ke-info-label">Tür:</div>
-                <div class="ke-info-value">${item.type}</div>
-            </div>` : ''}
-            ${item.city ? `
-            <div class="ke-info-item">
-                <div class="ke-info-label">İl:</div>
-                <div class="ke-info-value">${item.city}</div>
-            </div>` : ''}
-            ${item.district ? `
-            <div class="ke-info-item">
-                <div class="ke-info-label">İlçe:</div>
-                <div class="ke-info-value">${item.district}</div>
-            </div>` : ''}
-            ${item.mahalle ? `
-            <div class="ke-info-item">
-                <div class="ke-info-label">Mahalle:</div>
-                <div class="ke-info-value">${item.mahalle}</div>
-            </div>` : ''}
-            <div class="ke-info-item">
-                <div class="ke-info-label">Koord:</div>
-                <div class="ke-info-value" style="font-size: 11px;">${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</div>
-            </div>
-        </div>
-        
-        ${item.newItem ? '' : `
-        <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-bottom: 15px;">
-            ➕ Yeni Öğe Olarak İşaretle
-        </button>
-        `}
-        
-        <h3 style="color: #9b59b6; margin-top: 20px;">🔍 Yakındaki Wikidata Öğeleri</h3>
-        <div id="qidListContainer" style="margin-top: 10px;">
-            <div style="text-align: center; color: #95a5a6; padding: 20px; font-size: 12px;">
-                <div class="loading-spinner"></div> Aranıyor...
-            </div>
-        </div>
-    `;
-    
-    panel.innerHTML = html;
-}
-
-// QID listesini sağ panelde göster
-function updateQIDList(results) {
-    const container = document.getElementById('qidListContainer');
-    if (!container) return;
-    
-    if (results.length === 0) {
-        container.innerHTML = '<div style="text-align: center; color: #95a5a6; padding: 20px; font-size: 12px;">Yakında Wikidata öğesi bulunamadı</div>';
-        return;
-    }
-    
-    let html = '<div class="qid-list">';
-    results.forEach((result, index) => {
-        const qid = result.item.value.split('/').pop();
-        const label = result.itemLabel.value;
-        const coords = result.location.value.match(/Point\(([^ ]+) ([^ ]+)\)/);
-        
-        if (coords) {
-            const lng = parseFloat(coords[1]);
-            const lat = parseFloat(coords[2]);
-            const distance = calculateDistance(
-                activeKEMarker.keItem.lat,
-                activeKEMarker.keItem.lng,
-                lat,
-                lng
-            );
-            
-            html += `
-                <div class="qid-item" onmouseover="highlightQIDMarker('${qid}')" onmouseout="unhighlightQIDMarker()">
-                    <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" style="font-weight: 600; color: #9b59b6;">
-                        ${label}
-                    </a>
-                    <div style="font-size: 10px; color: #7f8c8d; margin-top: 2px;">
-                        ${qid} • ${distance.toFixed(0)}m uzakta
-                    </div>
-                    <a href="#" onclick="addKEToWikidata('${qid}', ${activeKEMarker.keItem.id}); return false;" class="add-ke-button">
-                        + KE ID Ekle
-                    </a>
-                </div>
-            `;
-        }
-    });
-    html += '</div>';
-    
-    container.innerHTML = html;
-}
-
-// İki nokta arası mesafe hesapla (metre)
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // Dünya yarıçapı metre
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
-
-function updateMarkerColor(marker, matched, active = false) {
-    let color;
-    if (active) {
-        color = '#3498db';
-    } else {
-        color = matched ? '#27ae60' : '#e74c3c';
-    }
-    
-    const icon = L.divIcon({
-        className: 'ke-marker',
-        html: `<div style="background: ${color}; width: ${active ? 16 : 12}px; height: ${active ? 16 : 12}px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>`,
-        iconSize: [active ? 16 : 12, active ? 16 : 12]
-    });
-    
-    marker.setIcon(icon);
-}
-
-function showSearchCircle(lat, lng, radius) {
-    if (searchCircle) {
-        map.removeLayer(searchCircle);
-    }
-    
-    searchCircle = L.circle([lat, lng], {
-        radius: radius,
-        color: '#3498db',
-        fillColor: '#3498db',
-        fillOpacity: 0.1,
-        weight: 2,
-        dashArray: '5, 5'
-    }).addTo(map);
-}
-
-async function loadNearbyQIDs(lat, lng, radius) {
-    qidMarkers.clearLayers();
-    
-    const radiusKm = radius / 1000;
-    
-    const query = `
-    SELECT ?item ?itemLabel ?location WHERE {
-      SERVICE wikibase:around {
-        ?item wdt:P625 ?location.
-        bd:serviceParam wikibase:center "Point(${lng} ${lat})"^^geo:wktLiteral.
-        bd:serviceParam wikibase:radius "${radiusKm}".
-      }
-      FILTER EXISTS { ?item wdt:P31 ?type }
-      SERVICE wikibase:label { bd:serviceParam wikibase:language "tr,en". }
-    }
-    LIMIT 100
-    `;
-    
-    const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
-    
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        displayQIDMarkers(data.results.bindings);
-        updateQIDList(data.results.bindings);
-        
-    } catch (error) {
-        console.error('Error loading QIDs:', error);
-        const container = document.getElementById('qidListContainer');
-        if (container) {
-            container.innerHTML = '<div style="text-align: center; color: #e74c3c; padding: 20px; font-size: 12px;">❌ Yüklenemedi</div>';
-        }
-    }
-}
-
-function displayQIDMarkers(results) {
-    results.forEach(result => {
-        const qid = result.item.value.split('/').pop();
-        const label = result.itemLabel.value;
-        const coords = result.location.value.match(/Point\(([^ ]+) ([^ ]+)\)/);
-        
-        if (coords) {
-            const lng = parseFloat(coords[1]);
-            const lat = parseFloat(coords[2]);
-            
-            const icon = L.divIcon({
-                className: 'qid-marker',
-                html: `<div style="background: #9b59b6; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-                iconSize: [10, 10]
-            });
-            
-            const marker = L.marker([lat, lng], { icon: icon });
-            marker.bindPopup(`<strong>${label}</strong><br>QID: ${qid}`);
-            
-            qidMarkers.addLayer(marker);
-        }
-    });
-    
-    console.log(`Displayed ${results.length} QID markers`);
-}
-
-function onMapMoveEnd() {
-    // Lazy loading
-}
-
-function updateStats() {
-    const matched = keData.filter(item => item.matched).length;
-    const newItems = keData.filter(item => item.newItem).length;
-    const total = keData.length;
-    const unmatched = total - matched - newItems;
-    
-    document.getElementById('totalPoints').textContent = total.toLocaleString();
-    document.getElementById('matchedPoints').textContent = matched.toLocaleString();
-    document.getElementById('unmatchedPoints').textContent = unmatched.toLocaleString();
-    document.getElementById('newItemPoints').textContent = newItems.toLocaleString();
-}
-
-function setupRadiusSlider() {
-    const radiusSlider = document.getElementById('searchRadius');
-    const radiusValue = document.getElementById('radiusValue');
-    
-    radiusSlider.addEventListener('input', (e) => {
-        const kmValue = parseFloat(e.target.value);
-        currentSearchRadius = kmValue * 1000;
-        radiusValue.textContent = `${kmValue} km`;
-        
-        if (activeKEMarker && activeKEMarker.keItem) {
-            const item = activeKEMarker.keItem;
-            showSearchCircle(item.lat, item.lng, currentSearchRadius);
-            loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
-        }
-    });
-}
-
-// ============================================
-// SAYFA BAŞLATMA
-// ============================================
-document.addEventListener('DOMContentLoaded', initMap);
-
-// Wikidata modal fonksiyonları
-function addKEToWikidata(qid, keId) {
-    document.getElementById('modalKeValue').textContent = keId;
-    document.getElementById('openWikidataBtn').onclick = function() {
-        window.open(`https://www.wikidata.org/wiki/${qid}`, '_blank');
-        closeWikidataModal();
-    };
-    document.getElementById('wikidataModal').classList.add('active');
-}
-
-function closeWikidataModal() {
-    document.getElementById('wikidataModal').classList.remove('active');
-}
-
-// QID marker highlight
-let highlightedQIDMarker = null;
-
-function highlightQIDMarker(qid) {
-    // QID marker'ını bul ve vurgula
-    qidMarkers.eachLayer(layer => {
-        const popup = layer.getPopup();
-        if (popup && popup.getContent().includes(qid)) {
-            layer.setIcon(L.divIcon({
-                className: 'qid-marker marker-highlight',
-                html: `<div style="background: #9b59b6; width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px rgba(155, 89, 182, 0.8);"></div>`,
-                iconSize: [14, 14]
-            }));
-            highlightedQIDMarker = layer;
-        }
-    });
-}
-
-function unhighlightQIDMarker() {
-    if (highlightedQIDMarker) {
-        highlightedQIDMarker.setIcon(L.divIcon({
-            className: 'qid-marker',
-            html: `<div style="background: #9b59b6; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-            iconSize: [10, 10]
-        }));
-        highlightedQIDMarker = null;
-    }
-}
+    <!-- Main App -->
+    <script src="app.js"></script>
+</body>
+</html>
