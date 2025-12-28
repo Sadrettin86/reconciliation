@@ -301,7 +301,7 @@ async function showActivities() {
     const body = document.getElementById('activitiesBody');
     
     modal.classList.add('active');
-    body.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">⏳ Yükleniyor...</div>';
+    body.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">Yükleniyor...</div>';
     
     try {
         const usersSnapshot = await database.ref('users').once('value');
@@ -327,17 +327,17 @@ async function showActivities() {
         activities.sort((a, b) => b.timestamp - a.timestamp);
         
         let html = '<div class="activities-section">';
-        html += '<h3>👥 EN AKTIF KULLANICILAR</h3>';
+        html += '<h3>EN AKTIF KULLANICILAR</h3>';
         
         if (sortedUsers.length === 0) {
             html += '<div style="text-align: center; padding: 20px; color: #95a5a6;">Henüz kullanıcı yok</div>';
         } else {
             sortedUsers.forEach((user, index) => {
-                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                const medal = index === 0 ? '1.' : index === 1 ? '2.' : index === 2 ? '3.' : `${index + 1}.`;
                 html += `
                     <div class="user-item">
                         <div class="user-name">
-                            ${medal} <span>#${index + 1}</span> <span>${user.name}</span>
+                            <span>${medal}</span> <span>${user.name}</span>
                         </div>
                         <div class="user-score">
                             <div class="user-total">${user.totalCount} işlem</div>
@@ -351,13 +351,13 @@ async function showActivities() {
         html += '</div>';
         
         html += '<div class="activities-section">';
-        html += '<h3>⏰ SON İŞLEMLER</h3>';
+        html += '<h3>SON İŞLEMLER</h3>';
         
         if (activities.length === 0) {
             html += '<div style="text-align: center; padding: 20px; color: #95a5a6;">Henüz işlem yok</div>';
         } else {
             activities.slice(0, 10).forEach(activity => {
-                const icon = activity.type === 'match' ? '🟢' : '🔵';
+                const icon = activity.type === 'match' ? '→' : '+';
                 const action = activity.type === 'match' 
                     ? `KE ${activity.keId} → ${activity.qid}` 
                     : `KE ${activity.keId} yeni öğe`;
@@ -366,7 +366,8 @@ async function showActivities() {
                 html += `
                     <div class="activity-item">
                         <div>
-                            ${icon} <span class="activity-user">${activity.userName}</span>
+                            <span style="margin-right: 5px;">${icon}</span>
+                            <span class="activity-user">${activity.userName}</span>
                             <div class="activity-action">${action}</div>
                         </div>
                         <div class="activity-time">${timeAgo}</div>
@@ -380,7 +381,7 @@ async function showActivities() {
         
     } catch (error) {
         console.error('Yapılanlar yüklenirken hata:', error);
-        body.innerHTML = '<div style="text-align: center; padding: 40px; color: #e74c3c;">❌ Yüklenemedi</div>';
+        body.innerHTML = '<div style="text-align: center; padding: 40px; color: #e74c3c;">Yüklenemedi</div>';
     }
 }
 
