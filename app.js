@@ -412,7 +412,11 @@ function loadEncodedData() {
     }
     
     try {
-        const decoded = atob(encodedKEData);
+        // Base64 decode - UTF-8 desteği ile (Türkçe karakterler için)
+        const decoded = decodeURIComponent(Array.prototype.map.call(atob(encodedKEData), function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
         const data = JSON.parse(decoded);
         
         console.log(`✅ Loaded ${data.length} points from encoded data`);
