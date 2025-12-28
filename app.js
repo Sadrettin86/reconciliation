@@ -534,7 +534,22 @@ function selectKEMarker(marker, item) {
     // Yarıçapa göre zoom yap
     const radiusKm = currentSearchRadius / 1000;
     let zoomLevel = radiusKm <= 0.5 ? 17 : (radiusKm <= 1 ? 16 : 15);
-    map.setView([item.lat, item.lng], zoomLevel, { animate: true, duration: 0.5 });
+    
+    // Sağ panel genişliği: 380px + 20px (right margin) = 400px
+    // Harita genişliğinin yarısından panel genişliğini çıkar
+    const mapContainer = map.getContainer();
+    const mapWidth = mapContainer.offsetWidth;
+    const panelWidth = 400; // 380px panel + 20px margin
+    
+    // Merkezi sola kaydır (yarıçap tamamen panelin dışında kalsın)
+    const offsetX = (mapWidth / 2 - panelWidth) / 2;
+    
+    // Pixel koordinatını hesapla ve offset uygula
+    const point = map.project([item.lat, item.lng], zoomLevel);
+    point.x -= offsetX;
+    const newCenter = map.unproject(point, zoomLevel);
+    
+    map.setView(newCenter, zoomLevel, { animate: true, duration: 0.5 });
     
     // Sağ paneli göster ve güncelle
     showInfoPanel(item);
