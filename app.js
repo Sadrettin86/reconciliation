@@ -471,7 +471,6 @@ function displayKEData() {
             </div>
         `;
         
-        marker.bindPopup(popupContent);
         marker.on('click', () => selectKEMarker(marker, item));
         marker.keItem = item;
         
@@ -490,6 +489,11 @@ function selectKEMarker(marker, item) {
     updateMarkerColor(marker, item.matched, true);
     
     showSearchCircle(item.lat, item.lng, currentSearchRadius);
+    
+    // Yarıçapa göre zoom yap
+    const radiusKm = currentSearchRadius / 1000;
+    let zoomLevel = radiusKm <= 0.5 ? 17 : (radiusKm <= 1 ? 16 : 15);
+    map.setView([item.lat, item.lng], zoomLevel, { animate: true, duration: 0.5 });
     
     // Sağ paneli göster ve güncelle
     showInfoPanel(item);
@@ -729,6 +733,11 @@ function setupRadiusSlider() {
         if (activeKEMarker && activeKEMarker.keItem) {
             const item = activeKEMarker.keItem;
             showSearchCircle(item.lat, item.lng, currentSearchRadius);
+    
+    // Yarıçapa göre zoom yap
+    const radiusKm = currentSearchRadius / 1000;
+    let zoomLevel = radiusKm <= 0.5 ? 17 : (radiusKm <= 1 ? 16 : 15);
+    map.setView([item.lat, item.lng], zoomLevel, { animate: true, duration: 0.5 });
             loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
         }
     });
