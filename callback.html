@@ -26,7 +26,7 @@
             width: 100%;
             height: 100%;
             z-index: 1;
-            filter: grayscale(100%) brightness(0.9);
+            filter: grayscale(30%);
         }
         
         .overlay {
@@ -35,8 +35,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(2px);
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(1px);
             z-index: 2;
         }
         
@@ -46,15 +46,15 @@
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            color: white;
+            color: #2c3e50;
             z-index: 3;
         }
         
         .spinner {
             width: 50px;
             height: 50px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid white;
+            border: 3px solid rgba(44, 62, 80, 0.2);
+            border-top: 3px solid #2c3e50;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto 30px;
@@ -70,28 +70,29 @@
             font-weight: 300;
             margin-bottom: 15px;
             letter-spacing: -0.5px;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            text-shadow: 0 2px 4px rgba(255, 255, 255, 0.8);
         }
         
         p {
             font-size: 18px;
-            opacity: 0.95;
+            opacity: 0.8;
             font-weight: 300;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            text-shadow: 0 1px 3px rgba(255, 255, 255, 0.8);
         }
         
         .message {
             margin-top: 30px;
             padding: 20px 30px;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(255, 255, 255, 0.9);
             border-radius: 8px;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         
         .error-message {
-            background: rgba(231, 76, 60, 0.3);
-            border: 1px solid rgba(231, 76, 60, 0.5);
+            background: rgba(231, 76, 60, 0.15);
+            border: 1px solid rgba(231, 76, 60, 0.3);
         }
     </style>
 </head>
@@ -121,9 +122,10 @@
             attributionControl: false
         });
         
-        // OpenStreetMap tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19
+        // CartoDB Positron - minimal ve temiz
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            subdomains: 'abcd'
         }).addTo(map);
         
         // OAuth işlemleri
