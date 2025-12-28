@@ -346,7 +346,7 @@
         }
         
         .activities-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
             color: white;
             padding: 20px 30px;
             border-radius: 16px 16px 0 0;
@@ -390,7 +390,7 @@
         }
         
         .user-item {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
             color: white;
             padding: 15px 20px;
             margin: 10px 0;
@@ -400,9 +400,9 @@
             font-size: 14px;
         }
         
-        .user-item:nth-child(2) { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-        .user-item:nth-child(3) { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .user-item:nth-child(4) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .user-item:nth-child(2) { background: linear-gradient(135deg, #4a5f7f 0%, #3d5a80 100%); }
+        .user-item:nth-child(3) { background: linear-gradient(135deg, #5a7c99 0%, #4682b4 100%); }
+        .user-item:nth-child(4) { background: linear-gradient(135deg, #6a8caf 0%, #5499c7 100%); }
         
         .user-name {
             display: flex;
@@ -465,11 +465,6 @@
                 <span id="radiusValue" style="font-size: 13px; font-weight: 600; min-width: 45px;">1 km</span>
             </div>
         </div>
-        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
-            <button onclick="showActivities()" style="width: 100%; padding: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
-                📊 Yapılanlar
-            </button>
-        </div>
         <div id="status" class="status" style="display: none;"></div>
     </div>
     
@@ -492,8 +487,8 @@
             <div class="stat-label">Yeni Öğe</div>
         </div>
         <div class="stat-item">
-            <button onclick="showActivities()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
-                📊 Yapılanlar
+            <button onclick="showActivities()" style="background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                Yapılanlar
             </button>
         </div>
     </div>
@@ -548,7 +543,7 @@
     <div id="activitiesModal" class="activities-modal">
         <div class="activities-content">
             <div class="activities-header">
-                <h2>📊 Yapılanlar</h2>
+                <h2>Yapılanlar</h2>
                 <button class="close-activities" onclick="closeActivities()">✕</button>
             </div>
             <div class="activities-body" id="activitiesBody">
