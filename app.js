@@ -431,8 +431,8 @@ function displayKEData() {
         
         const icon = L.divIcon({
             className: 'ke-marker',
-            html: `<div style="background: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-            iconSize: [12, 12]
+            html: `<div style="background: ${color}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [16, 16]
         });
         
         const marker = L.marker([item.lat, item.lng], { icon: icon });
@@ -545,9 +545,8 @@ function displayQIDList(results) {
         return;
     }
     
-    let html = `<div class="qid-list">`;
-    
-    results.forEach(result => {
+    // Her QID için P31 (instance of) bilgisini çek
+    const qidPromises = results.map(async result => {
         const qid = result.item.value.split('/').pop();
         const label = result.itemLabel.value;
         const coords = result.location.value.match(/Point\(([^ ]+) ([^ ]+)\)/);
@@ -558,7 +557,7 @@ function displayQIDList(results) {
             
             // Mesafe hesapla
             const keItem = activeKEMarker.keItem;
-            const R = 6371000; // metre
+            const R = 6371000;
             const dLat = (lat - keItem.lat) * Math.PI / 180;
             const dLon = (lng - keItem.lng) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -567,18 +566,59 @@ function displayQIDList(results) {
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             const distance = Math.round(R * c);
             
-            html += `
-                <div class="qid-item" onmouseover="highlightQIDMarker('${qid}')" onmouseout="unhighlightQIDMarker()">
-                    <a href="https://www.wikidata.org/wiki/${qid}" target="_blank">${qid}</a> - ${label}
-                    <br><small style="color: #7f8c8d;">Uzaklık: ${distance}m</small>
-                    <a href="#" onclick="openAddKEModal('${qid}', ${keItem.id}); return false;" class="add-ke-button">+ KE ID Ekle</a>
-                </div>
-            `;
+            // P31 değerini çek
+            let p31Label = '';
+            try {
+                const p31Query = `
+                    SELECT ?typeLabel WHERE {
+                      wd:${qid} wdt:P31 ?type .
+                      SERVICE wikibase:label { bd:serviceParam wikibase:language "tr,en". }
+                    } LIMIT 1
+                `;
+                const p31Url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(p31Query)}&format=json`;
+                const p31Response = await fetch(p31Url);
+                const p31Data = await p31Response.json();
+                if (p31Data.results.bindings.length > 0) {
+                    p31Label = p31Data.results.bindings[0].typeLabel.value;
+                }
+            } catch (e) {
+                console.log('P31 yüklenemedi:', qid);
+            }
+            
+            return { qid, label, distance, p31Label };
         }
+        return null;
     });
     
-    html += '</div>';
-    container.innerHTML = html;
+    Promise.all(qidPromises).then(qidList => {
+        const validQids = qidList.filter(q => q !== null);
+        
+        let html = `<div class="qid-list">`;
+        
+        validQids.forEach(q => {
+            const p31Text = q.p31Label ? ` <span style="color: #7f8c8d; font-size: 10px;">(${q.p31Label})</span>` : '';
+            
+            html += `
+                <div class="qid-item" onmouseover="highlightQIDMarker('${q.qid}')" onmouseout="unhighlightQIDMarker()">
+                    <a href="https://www.wikidata.org/wiki/${q.qid}" target="_blank">${q.qid}</a> - ${q.label}${p31Text}
+                    <br><small style="color: #7f8c8d;">Uzaklık: ${q.distance}m</small>
+                    <div style="margin-top: 5px; display: flex; gap: 5px;">
+                        <a href="#" onclick="openAddKEModal('${q.qid}', ${activeKEMarker.keItem.id}); return false;" 
+                           style="flex: 1; padding: 4px 8px; background: #4caf50; color: white; border-radius: 3px; font-size: 10px; text-decoration: none; font-weight: bold; text-align: center;">
+                            + KE ID Ekle
+                        </a>
+                        <a href="#" onclick="markAsNewItem(${activeKEMarker.keItem.id}); return false;" 
+                           style="flex: 1; padding: 4px 8px; background: #3498db; color: white; border-radius: 3px; font-size: 10px; text-decoration: none; font-weight: bold; text-align: center;">
+                            Yeni Öğe
+                        </a>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    });
 }
 
 // QID marker highlight
@@ -612,17 +652,26 @@ function unhighlightQIDMarker() {
 }
 
 function updateMarkerColor(marker, matched, active = false) {
+    const item = marker.keItem;
     let color;
-    if (active) {
-        color = '#3498db';
+    
+    // Renk değişmesin - orijinal rengini koru
+    if (item.newItem) {
+        color = '#3498db'; // Mavi
+    } else if (item.matched) {
+        color = '#27ae60'; // Yeşil
     } else {
-        color = matched ? '#27ae60' : '#e74c3c';
+        color = '#e74c3c'; // Kırmızı
     }
+    
+    // Aktif ise siyah kalın kenarlık
+    const borderStyle = active ? 'border: 3px solid #000;' : 'border: 2px solid white;';
+    const size = active ? 18 : 16;
     
     const icon = L.divIcon({
         className: 'ke-marker',
-        html: `<div style="background: ${color}; width: ${active ? 16 : 12}px; height: ${active ? 16 : 12}px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>`,
-        iconSize: [active ? 16 : 12, active ? 16 : 12]
+        html: `<div style="background: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%; ${borderStyle} box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>`,
+        iconSize: [size, size]
     });
     
     marker.setIcon(icon);
