@@ -409,6 +409,9 @@ function loadEncodedData() {
     }
 }
 
+// Excel upload özelliği kaldırıldı (index.html'de input yok)
+// Gerekirse eklenebilir ama şu an data.js kullanıyoruz
+
 // ============================================
 // HARİTA GÖSTERİM
 // ============================================
@@ -489,7 +492,131 @@ function selectKEMarker(marker, item) {
     showSearchCircle(item.lat, item.lng, currentSearchRadius);
     loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
     
+    // Sağ paneli güncelle
+    updateInfoPanel(item);
+    
     console.log(`Selected KE ${item.id}`);
+}
+
+// Sağ panel içeriğini güncelle
+function updateInfoPanel(item) {
+    const panel = document.getElementById('infoPanel');
+    if (!panel) return;
+    
+    const statusBadge = item.newItem 
+        ? '<span style="background: #3498db; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600;">YENİ ÖĞE</span>'
+        : item.matched 
+        ? '<span style="background: #27ae60; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600;">EŞLEŞMİŞ</span>'
+        : '<span style="background: #e74c3c; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600;">EŞLEŞMEMİŞ</span>';
+    
+    let html = `
+        <h2>📍 ${item.name || 'İsimsiz'}</h2>
+        <div style="margin-bottom: 15px;">${statusBadge}</div>
+        
+        <div class="ke-info">
+            <div class="ke-info-item">
+                <div class="ke-info-label">KE ID:</div>
+                <div class="ke-info-value"><strong>${item.id}</strong></div>
+            </div>
+            ${item.type ? `
+            <div class="ke-info-item">
+                <div class="ke-info-label">Tür:</div>
+                <div class="ke-info-value">${item.type}</div>
+            </div>` : ''}
+            ${item.city ? `
+            <div class="ke-info-item">
+                <div class="ke-info-label">İl:</div>
+                <div class="ke-info-value">${item.city}</div>
+            </div>` : ''}
+            ${item.district ? `
+            <div class="ke-info-item">
+                <div class="ke-info-label">İlçe:</div>
+                <div class="ke-info-value">${item.district}</div>
+            </div>` : ''}
+            ${item.mahalle ? `
+            <div class="ke-info-item">
+                <div class="ke-info-label">Mahalle:</div>
+                <div class="ke-info-value">${item.mahalle}</div>
+            </div>` : ''}
+            <div class="ke-info-item">
+                <div class="ke-info-label">Koord:</div>
+                <div class="ke-info-value" style="font-size: 11px;">${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</div>
+            </div>
+        </div>
+        
+        ${item.newItem ? '' : `
+        <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-bottom: 15px;">
+            ➕ Yeni Öğe Olarak İşaretle
+        </button>
+        `}
+        
+        <h3 style="color: #9b59b6; margin-top: 20px;">🔍 Yakındaki Wikidata Öğeleri</h3>
+        <div id="qidListContainer" style="margin-top: 10px;">
+            <div style="text-align: center; color: #95a5a6; padding: 20px; font-size: 12px;">
+                <div class="loading-spinner"></div> Aranıyor...
+            </div>
+        </div>
+    `;
+    
+    panel.innerHTML = html;
+}
+
+// QID listesini sağ panelde göster
+function updateQIDList(results) {
+    const container = document.getElementById('qidListContainer');
+    if (!container) return;
+    
+    if (results.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: #95a5a6; padding: 20px; font-size: 12px;">Yakında Wikidata öğesi bulunamadı</div>';
+        return;
+    }
+    
+    let html = '<div class="qid-list">';
+    results.forEach((result, index) => {
+        const qid = result.item.value.split('/').pop();
+        const label = result.itemLabel.value;
+        const coords = result.location.value.match(/Point\(([^ ]+) ([^ ]+)\)/);
+        
+        if (coords) {
+            const lng = parseFloat(coords[1]);
+            const lat = parseFloat(coords[2]);
+            const distance = calculateDistance(
+                activeKEMarker.keItem.lat,
+                activeKEMarker.keItem.lng,
+                lat,
+                lng
+            );
+            
+            html += `
+                <div class="qid-item" onmouseover="highlightQIDMarker('${qid}')" onmouseout="unhighlightQIDMarker()">
+                    <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" style="font-weight: 600; color: #9b59b6;">
+                        ${label}
+                    </a>
+                    <div style="font-size: 10px; color: #7f8c8d; margin-top: 2px;">
+                        ${qid} • ${distance.toFixed(0)}m uzakta
+                    </div>
+                    <a href="#" onclick="addKEToWikidata('${qid}', ${activeKEMarker.keItem.id}); return false;" class="add-ke-button">
+                        + KE ID Ekle
+                    </a>
+                </div>
+            `;
+        }
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+// İki nokta arası mesafe hesapla (metre)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Dünya yarıçapı metre
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
 }
 
 function updateMarkerColor(marker, matched, active = false) {
@@ -549,9 +676,14 @@ async function loadNearbyQIDs(lat, lng, radius) {
         const data = await response.json();
         
         displayQIDMarkers(data.results.bindings);
+        updateQIDList(data.results.bindings);
         
     } catch (error) {
         console.error('Error loading QIDs:', error);
+        const container = document.getElementById('qidListContainer');
+        if (container) {
+            container.innerHTML = '<div style="text-align: center; color: #e74c3c; padding: 20px; font-size: 12px;">❌ Yüklenemedi</div>';
+        }
     }
 }
 
@@ -618,3 +750,46 @@ function setupRadiusSlider() {
 // SAYFA BAŞLATMA
 // ============================================
 document.addEventListener('DOMContentLoaded', initMap);
+
+// Wikidata modal fonksiyonları
+function addKEToWikidata(qid, keId) {
+    document.getElementById('modalKeValue').textContent = keId;
+    document.getElementById('openWikidataBtn').onclick = function() {
+        window.open(`https://www.wikidata.org/wiki/${qid}`, '_blank');
+        closeWikidataModal();
+    };
+    document.getElementById('wikidataModal').classList.add('active');
+}
+
+function closeWikidataModal() {
+    document.getElementById('wikidataModal').classList.remove('active');
+}
+
+// QID marker highlight
+let highlightedQIDMarker = null;
+
+function highlightQIDMarker(qid) {
+    // QID marker'ını bul ve vurgula
+    qidMarkers.eachLayer(layer => {
+        const popup = layer.getPopup();
+        if (popup && popup.getContent().includes(qid)) {
+            layer.setIcon(L.divIcon({
+                className: 'qid-marker marker-highlight',
+                html: `<div style="background: #9b59b6; width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px rgba(155, 89, 182, 0.8);"></div>`,
+                iconSize: [14, 14]
+            }));
+            highlightedQIDMarker = layer;
+        }
+    });
+}
+
+function unhighlightQIDMarker() {
+    if (highlightedQIDMarker) {
+        highlightedQIDMarker.setIcon(L.divIcon({
+            className: 'qid-marker',
+            html: `<div style="background: #9b59b6; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [10, 10]
+        }));
+        highlightedQIDMarker = null;
+    }
+}
