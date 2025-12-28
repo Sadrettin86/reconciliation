@@ -30,6 +30,14 @@ function initMap() {
     
     // Encoded data varsa yükle
     loadEncodedData();
+    
+    // Periyodik güncelleme - her 10 saniyede GitHub'dan yeni öğeleri çek
+    // Token ile: 5000/saat limit (yeterli)
+    // Token olmadan: 60/saat limit (dikkatli kullanın veya token ekleyin)
+    setInterval(async () => {
+        console.log('🔄 Yeni öğeler kontrol ediliyor...');
+        await loadNewItemsFromStorage();
+    }, 10000); // 10 saniye
 }
 
 // Encoded KE verisini yükle (data.js dosyasından)
@@ -59,11 +67,15 @@ function loadEncodedData() {
             district: point.d || '',
             mahalle: point.m || '',
             access: point.a || '',
-            matched: false
+            matched: false,
+            newItem: false  // Yeni öğe mi?
         }));
         
         displayKEData();
         updateStats();
+        
+        // LocalStorage'dan yeni öğeleri yükle
+        loadNewItemsFromStorage();
         
         console.log('Sample data:', keData[0]);
         
@@ -135,7 +147,14 @@ function displayKEData() {
     keMarkers.clearLayers();
     
     keData.forEach(item => {
-        const color = item.matched ? '#27ae60' : '#e74c3c';
+        let color;
+        if (item.newItem) {
+            color = '#3498db'; // Mavi - Yeni öğe
+        } else if (item.matched) {
+            color = '#27ae60'; // Yeşil - Eşleşmiş
+        } else {
+            color = '#e74c3c'; // Kırmızı - Eşleşmemiş
+        }
         
         const icon = L.divIcon({
             className: 'ke-marker',
@@ -146,11 +165,18 @@ function displayKEData() {
         const marker = L.marker([item.lat, item.lng], { icon: icon });
         
         // Zengin popup içeriği
+        const statusBadge = item.newItem 
+            ? '<span style="background: #3498db; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">YENİ ÖĞE</span>'
+            : item.matched 
+            ? '<span style="background: #27ae60; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">EŞLEŞMİŞ</span>'
+            : '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">EŞLEŞMEMİŞ</span>';
+        
         const popupContent = `
             <div style="min-width: 200px;">
                 <h3 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 14px; border-bottom: 2px solid #3498db; padding-bottom: 5px;">
                     ${item.name || 'İsimsiz'}
                 </h3>
+                <div style="margin-bottom: 10px;">${statusBadge}</div>
                 <table style="width: 100%; font-size: 12px;">
                     <tr><td style="color: #7f8c8d; padding: 2px 0;"><strong>KE ID:</strong></td><td>${item.id}</td></tr>
                     ${item.type ? `<tr><td style="color: #7f8c8d; padding: 2px 0;"><strong>Tür:</strong></td><td>${item.type}</td></tr>` : ''}
@@ -163,6 +189,13 @@ function displayKEData() {
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ecf0f1;">
                     <small style="color: #95a5a6;">📍 ${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</small>
                 </div>
+                ${item.newItem ? '' : `
+                <div style="margin-top: 10px;">
+                    <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                        ➕ Yeni Öğe Olarak İşaretle
+                    </button>
+                </div>
+                `}
             </div>
         `;
         
@@ -297,12 +330,14 @@ function onMapMoveEnd() {
 // İstatistikleri güncelle
 function updateStats() {
     const matched = keData.filter(item => item.matched).length;
+    const newItems = keData.filter(item => item.newItem).length;
     const total = keData.length;
-    const unmatched = total - matched;
+    const unmatched = total - matched - newItems;
     
     document.getElementById('totalPoints').textContent = total.toLocaleString();
     document.getElementById('matchedPoints').textContent = matched.toLocaleString();
     document.getElementById('unmatchedPoints').textContent = unmatched.toLocaleString();
+    document.getElementById('newItemPoints').textContent = newItems.toLocaleString();
 }
 
 // Arama yarıçapı kontrolü
@@ -323,3 +358,201 @@ radiusSlider.addEventListener('input', (e) => {
 
 // Sayfa yüklendiğinde haritayı başlat
 document.addEventListener('DOMContentLoaded', initMap);
+
+// GitHub configuration
+const GITHUB_REPO = 'Sadrettin86/reconciliation';
+const GITHUB_FILE = 'yeni-ogeler.txt';
+
+// Yeni öğe olarak işaretle
+async function markAsNewItem(keId) {
+    const item = keData.find(i => i.id === keId);
+    if (!item) return;
+    
+    // Token kontrolü
+    let token = localStorage.getItem('githubToken');
+    if (!token) {
+        token = prompt('GitHub Personal Access Token girin:\n\n1. GitHub.com → Settings → Developer settings\n2. Personal access tokens → Generate new token\n3. Scope: "repo" seçin\n4. Token\'ı kopyalayıp buraya yapıştırın');
+        if (!token) {
+            alert('❌ Token olmadan yeni öğe eklenemez!');
+            return;
+        }
+        localStorage.setItem('githubToken', token);
+    }
+    
+    // Durumu güncelle
+    item.newItem = true;
+    item.matched = false;
+    
+    // GitHub'a commit et
+    try {
+        await addToGitHubFile(keId, token);
+        
+        // Haritayı güncelle
+        displayKEData();
+        updateStats();
+        
+        // Bildirim
+        alert(`✅ KE ID ${keId} "Yeni Öğe" olarak işaretlendi ve GitHub'a eklendi!\n\nhttps://github.com/${GITHUB_REPO}/blob/main/${GITHUB_FILE}`);
+    } catch (error) {
+        console.error('GitHub commit hatası:', error);
+        
+        if (error.message.includes('401')) {
+            // Token geçersiz
+            localStorage.removeItem('githubToken');
+            alert('❌ GitHub token geçersiz! Lütfen yeni bir token alın ve tekrar deneyin.');
+        } else {
+            alert('❌ GitHub\'a eklenirken hata oluştu: ' + error.message);
+        }
+    }
+}
+
+// GitHub'a dosya commit et
+async function addToGitHubFile(keId, token) {
+    // 1. Önce mevcut dosyayı al
+    let currentContent = '';
+    let currentSha = null;
+    
+    try {
+        const getResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            }
+        );
+        
+        if (getResponse.ok) {
+            const data = await getResponse.json();
+            currentContent = atob(data.content); // Base64 decode
+            currentSha = data.sha;
+            
+            // Zaten var mı kontrol et
+            if (currentContent.includes(keId.toString())) {
+                console.log(`KE ID ${keId} zaten listede`);
+                return;
+            }
+        }
+    } catch (error) {
+        console.log('Dosya yok, yeni oluşturulacak');
+    }
+    
+    // 2. Yeni satırı ekle
+    const newContent = currentContent + keId + '\n';
+    const encodedContent = btoa(unescape(encodeURIComponent(newContent))); // Base64 encode
+    
+    // 3. Commit et
+    const commitData = {
+        message: `Yeni öğe eklendi: KE ID ${keId}`,
+        content: encodedContent
+    };
+    
+    if (currentSha) {
+        commitData.sha = currentSha; // Dosya varsa SHA gerekli
+    }
+    
+    const putResponse = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`,
+        {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(commitData)
+        }
+    );
+    
+    if (!putResponse.ok) {
+        const error = await putResponse.json();
+        throw new Error(error.message || 'GitHub commit başarısız');
+    }
+    
+    console.log(`✅ KE ID ${keId} GitHub'a eklendi`);
+    return putResponse.json();
+}
+
+// LocalStorage'dan yeni öğeleri yükle (sayfa yüklenirken)
+async function loadNewItemsFromStorage() {
+    // GitHub'dan yeni öğeleri çek
+    try {
+        // Token varsa kullan (rate limit 5000/saat), yoksa devam et (60/saat)
+        const token = localStorage.getItem('githubToken');
+        const headers = {
+            'Accept': 'application/vnd.github.v3+json'
+        };
+        
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(
+            `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`,
+            { headers }
+        );
+        
+        // Rate limit bilgisini kontrol et
+        const remaining = response.headers.get('X-RateLimit-Remaining');
+        const limit = response.headers.get('X-RateLimit-Limit');
+        
+        console.log(`📊 GitHub API: ${remaining}/${limit} kaldı`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            const content = atob(data.content); // Base64 decode
+            const newItemIds = content.trim().split('\n').map(id => parseInt(id)).filter(id => !isNaN(id));
+            
+            let updateCount = 0;
+            keData.forEach(item => {
+                const wasNewItem = item.newItem;
+                item.newItem = newItemIds.includes(item.id);
+                
+                if (item.newItem && !wasNewItem) {
+                    updateCount++;
+                }
+            });
+            
+            console.log(`Loaded ${newItemIds.length} new items from GitHub`);
+            
+            if (updateCount > 0) {
+                console.log(`🔔 ${updateCount} yeni öğe eklendi!`);
+            }
+            
+            // Son güncelleme zamanını göster
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            if (lastUpdateEl) {
+                const now = new Date().toLocaleTimeString('tr-TR');
+                const tokenStatus = token ? '🔑' : '';
+                lastUpdateEl.textContent = `Son güncelleme: ${now} ${tokenStatus}`;
+                lastUpdateEl.style.color = updateCount > 0 ? '#27ae60' : '#95a5a6';
+            }
+            
+            // Haritayı güncelle
+            displayKEData();
+            updateStats();
+        } else if (response.status === 403) {
+            // Rate limit aşıldı
+            console.warn('⚠️ GitHub API rate limit aşıldı!');
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            if (lastUpdateEl) {
+                lastUpdateEl.textContent = '⚠️ Rate limit aşıldı';
+                lastUpdateEl.style.color = '#e74c3c';
+            }
+        } else {
+            // Dosya henüz yok
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            if (lastUpdateEl) {
+                lastUpdateEl.textContent = 'Henüz yeni öğe yok';
+                lastUpdateEl.style.color = '#95a5a6';
+            }
+        }
+    } catch (error) {
+        console.log('GitHub dosyası yüklenemedi:', error);
+        const lastUpdateEl = document.getElementById('lastUpdate');
+        if (lastUpdateEl) {
+            lastUpdateEl.textContent = 'Güncelleme başarısız';
+            lastUpdateEl.style.color = '#e74c3c';
+        }
+    }
+}
