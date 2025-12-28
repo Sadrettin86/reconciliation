@@ -536,17 +536,17 @@ function selectKEMarker(marker, item) {
     let zoomLevel = radiusKm <= 0.5 ? 17 : (radiusKm <= 1 ? 16 : 15);
     
     // Sağ panel genişliği: 380px + 20px (right margin) = 400px
-    // Harita genişliğinin yarısından panel genişliğini çıkar
+    // Merkezi SOLA kaydır ki yarıçap panelin dışında kalsın
     const mapContainer = map.getContainer();
     const mapWidth = mapContainer.offsetWidth;
-    const panelWidth = 400; // 380px panel + 20px margin
+    const panelWidth = 410; // 380px panel + 30px margin
     
-    // Merkezi sola kaydır (yarıçap tamamen panelin dışında kalsın)
-    const offsetX = (mapWidth / 2 - panelWidth) / 2;
+    // Harita merkezini sola kaydır
+    const offsetX = panelWidth / 2;
     
     // Pixel koordinatını hesapla ve offset uygula
     const point = map.project([item.lat, item.lng], zoomLevel);
-    point.x -= offsetX;
+    point.x += offsetX; // ARTIYA ÇEVİRDİK - sağa kayar, merkez sola gider
     const newCenter = map.unproject(point, zoomLevel);
     
     map.setView(newCenter, zoomLevel, { animate: true, duration: 0.5 });
@@ -801,7 +801,6 @@ async function loadNearbyQIDs(lat, lng, radius) {
       FILTER EXISTS { ?item wdt:P31 ?type }
       SERVICE wikibase:label { bd:serviceParam wikibase:language "tr,en". }
     }
-    LIMIT 100
     `;
     
     const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
