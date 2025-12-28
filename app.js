@@ -6,15 +6,7 @@ let keMarkers = L.markerClusterGroup({
     spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
     zoomToBoundsOnClick: true,
-    maxClusterRadius: 50,
-    iconCreateFunction: function(cluster) {
-        // Tek renk cluster - hafif kırmızı
-        return L.divIcon({
-            html: '<div style="background: rgba(231, 76, 60, 0.6); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"><span style="color: white; font-weight: bold; font-size: 14px;">' + cluster.getChildCount() + '</span></div>',
-            className: 'custom-cluster-icon',
-            iconSize: L.point(40, 40)
-        });
-    }
+    maxClusterRadius: 50
 });
 let qidMarkers = L.layerGroup();
 let keData = [];
@@ -713,10 +705,30 @@ function updateMarkerColor(marker, matched, active = false) {
     }
     
     if (active) {
-        // Aktif: Kare (rounded corners) + siyah kenarlık + daha büyük
+        // Aktif: Kare (rounded corners) + siyah kenarlık + daha büyük + PULSE animasyon
         const icon = L.divIcon({
             className: 'ke-marker',
-            html: `<div style="background: ${color}; width: 28px; height: 28px; border-radius: 6px; border: 3px solid #000; box-shadow: 0 4px 8px rgba(0,0,0,0.5);"></div>`,
+            html: `<div style="
+                background: ${color}; 
+                width: 28px; 
+                height: 28px; 
+                border-radius: 6px; 
+                border: 3px solid #000; 
+                box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+                animation: pulse 1.5s ease-in-out infinite;
+            "></div>
+            <style>
+                @keyframes pulse {
+                    0%, 100% { 
+                        opacity: 1; 
+                        transform: scale(1); 
+                    }
+                    50% { 
+                        opacity: 0.7; 
+                        transform: scale(1.1); 
+                    }
+                }
+            </style>`,
             iconSize: [28, 28]
         });
         marker.setIcon(icon);
