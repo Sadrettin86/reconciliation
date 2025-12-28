@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Callback - KE Harita</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 30px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        h1 {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            color: #7f8c8d;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .redirect-info {
+            margin-top: 20px;
+            color: #95a5a6;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h1 id="title">Giriş Yapılıyor...</h1>
+        <p id="message">Lütfen bekleyin, Wikidata ile bağlantı kuruluyor.</p>
+        <div id="status"></div>
+        <div class="redirect-info" id="redirect"></div>
+    </div>
+
+    <script>
+        console.log('OAuth Callback sayfası yüklendi');
+        
+        // URL parametrelerini al
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const error = urlParams.get('error');
+        const errorDescription = urlParams.get('error_description');
+        
+        const titleEl = document.getElementById('title');
+        const messageEl = document.getElementById('message');
+        const statusEl = document.getElementById('status');
+        const redirectEl = document.getElementById('redirect');
+        
+        if (error) {
+            // Hata durumu
+            console.error('OAuth hatası:', error, errorDescription);
+            
+            document.querySelector('.spinner').style.display = 'none';
+            titleEl.textContent = '❌ Giriş Başarısız';
+            messageEl.textContent = errorDescription || 'Bir hata oluştu.';
+            
+            statusEl.className = 'status error';
+            statusEl.innerHTML = `
+                <strong>Hata:</strong> ${error}<br>
+                ${errorDescription || ''}
+            `;
+            
+            redirectEl.textContent = '5 saniye sonra ana sayfaya yönlendirileceksiniz...';
+            
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 5000);
+            
+        } else if (code) {
+            // Başarılı - authorization code alındı
+            console.log('Authorization code alındı:', code);
+            
+            titleEl.textContent = '✅ Giriş Başarılı!';
+            messageEl.textContent = 'Wikidata hesabınızla bağlantı kuruldu.';
+            
+            statusEl.className = 'status success';
+            statusEl.innerHTML = `
+                <strong>Başarılı!</strong> Token alınıyor...
+            `;
+            
+            // Authorization code'u localStorage'a kaydet (geçici)
+            localStorage.setItem('oauth_code', code);
+            localStorage.setItem('oauth_timestamp', Date.now().toString());
+            
+            redirectEl.textContent = 'Ana sayfaya yönlendiriliyorsunuz...';
+            
+            // Ana sayfaya yönlendir (1 saniye sonra)
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+            
+        } else {
+            // Ne code ne error - geçersiz callback
+            console.error('Geçersiz callback - code veya error yok');
+            
+            document.querySelector('.spinner').style.display = 'none';
+            titleEl.textContent = '⚠️ Geçersiz İstek';
+            messageEl.textContent = 'OAuth callback parametreleri bulunamadı.';
+            
+            statusEl.className = 'status error';
+            statusEl.innerHTML = `
+                <strong>Hata:</strong> Geçersiz OAuth callback URL'i.<br>
+                Lütfen giriş işlemini tekrar deneyin.
+            `;
+            
+            redirectEl.textContent = '5 saniye sonra ana sayfaya yönlendirileceksiniz...';
+            
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
