@@ -72,6 +72,16 @@ function initMap() {
     
     map.on('moveend', onMapMoveEnd);
     
+    // Boş alana tıklayınca sidebar ve yarıçap kapat
+    map.on('click', function(e) {
+        // Eğer marker'a tıklanmadıysa (event propagation durdurulamadıysa)
+        setTimeout(() => {
+            if (!e.originalEvent._markerClicked) {
+                closeSidebar();
+            }
+        }, 10);
+    });
+    
     // Encoded data yükle
     loadEncodedData();
     
@@ -80,6 +90,29 @@ function initMap() {
     
     // Arama yarıçapı slider
     setupRadiusSlider();
+}
+
+// Sidebar ve yarıçapı kapat
+function closeSidebar() {
+    const panel = document.getElementById('infoPanel');
+    if (panel) {
+        panel.style.display = 'none';
+    }
+    
+    // Yarıçap çemberini kaldır
+    if (searchCircle) {
+        map.removeLayer(searchCircle);
+        searchCircle = null;
+    }
+    
+    // QID marker'larını temizle
+    qidMarkers.clearLayers();
+    
+    // Aktif marker'ı sıfırla
+    if (activeKEMarker) {
+        updateMarkerColor(activeKEMarker, activeKEMarker.keItem.matched, false);
+        activeKEMarker = null;
+    }
 }
 
 // ============================================
@@ -431,8 +464,8 @@ function displayKEData() {
         
         const icon = L.divIcon({
             className: 'ke-marker',
-            html: `<div style="background: ${color}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-            iconSize: [16, 16]
+            html: `<div style="background: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [20, 20]
         });
         
         const marker = L.marker([item.lat, item.lng], { icon: icon });
@@ -471,7 +504,10 @@ function displayKEData() {
             </div>
         `;
         
-        marker.on('click', () => selectKEMarker(marker, item));
+        marker.on('click', (e) => {
+            e.originalEvent._markerClicked = true;
+            selectKEMarker(marker, item);
+        });
         marker.keItem = item;
         
         keMarkers.addLayer(marker);
@@ -599,7 +635,9 @@ function displayQIDList(results) {
             const p31Text = q.p31Label ? ` <span style="color: #7f8c8d; font-size: 10px;">(${q.p31Label})</span>` : '';
             
             html += `
-                <div class="qid-item" onmouseover="highlightQIDMarker('${q.qid}')" onmouseout="unhighlightQIDMarker()">
+                <div class="qid-item" id="qid-item-${q.qid}" 
+                     onmouseover="highlightQIDMarker('${q.qid}'); this.style.background='#fff3cd';" 
+                     onmouseout="unhighlightQIDMarker(); this.style.background='#f8f9fa';">
                     <a href="https://www.wikidata.org/wiki/${q.qid}" target="_blank">${q.qid}</a> - ${q.label}${p31Text}
                     <br><small style="color: #7f8c8d;">Uzaklık: ${q.distance}m</small>
                     <div style="margin-top: 5px; display: flex; gap: 5px;">
@@ -626,12 +664,11 @@ let highlightedQID = null;
 
 function highlightQIDMarker(qid) {
     qidMarkers.eachLayer(marker => {
-        const popup = marker.getPopup();
-        if (popup && popup.getContent().includes(qid)) {
+        if (marker.qid === qid) {
             const highlighted = L.divIcon({
                 className: 'qid-marker marker-highlight',
-                html: `<div style="background: #9b59b6; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(155,89,182,0.8);"></div>`,
-                iconSize: [14, 14]
+                html: `<div style="background: #9b59b6; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(155,89,182,0.8);"></div>`,
+                iconSize: [16, 16]
             });
             marker.setIcon(highlighted);
             highlightedQID = marker;
@@ -643,8 +680,8 @@ function unhighlightQIDMarker() {
     if (highlightedQID) {
         const normal = L.divIcon({
             className: 'qid-marker',
-            html: `<div style="background: #9b59b6; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-            iconSize: [10, 10]
+            html: `<div style="background: #9b59b6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [12, 12]
         });
         highlightedQID.setIcon(normal);
         highlightedQID = null;
@@ -664,9 +701,9 @@ function updateMarkerColor(marker, matched, active = false) {
         color = '#e74c3c'; // Kırmızı
     }
     
-    // Aktif ise siyah kalın kenarlık
+    // Aktif ise siyah kalın kenarlık ve daha büyük
     const borderStyle = active ? 'border: 3px solid #000;' : 'border: 2px solid white;';
-    const size = active ? 18 : 16;
+    const size = active ? 22 : 20;
     
     const icon = L.divIcon({
         className: 'ke-marker',
@@ -740,13 +777,35 @@ function displayQIDMarkers(results) {
             
             const icon = L.divIcon({
                 className: 'qid-marker',
-                html: `<div style="background: #9b59b6; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-                iconSize: [10, 10]
+                html: `<div style="background: #9b59b6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [12, 12]
             });
             
             const marker = L.marker([lat, lng], { icon: icon });
             marker.bindPopup(`<strong>${label}</strong><br>QID: ${qid}`);
             
+            // QID marker'a mouse gelince sidebar'da highlight
+            marker.on('mouseover', () => {
+                const sidebarItem = document.getElementById('qid-item-' + qid);
+                if (sidebarItem) {
+                    // Scroll to item
+                    sidebarItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // Turuncu highlight
+                    sidebarItem.style.background = '#ffc107';
+                    sidebarItem.style.transition = 'background 0.3s';
+                }
+            });
+            
+            marker.on('mouseout', () => {
+                const sidebarItem = document.getElementById('qid-item-' + qid);
+                if (sidebarItem) {
+                    // Gri'ye dön
+                    sidebarItem.style.background = '#f8f9fa';
+                }
+            });
+            
+            marker.qid = qid; // QID'yi marker'a ekle
             qidMarkers.addLayer(marker);
         }
     });
