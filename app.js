@@ -561,12 +561,10 @@ function showInfoPanel(item) {
         ${item.city ? `<p><span class="label">İl:</span> ${item.city}</p>` : ''}
         ${item.district ? `<p><span class="label">İlçe:</span> ${item.district}</p>` : ''}
         ${item.mahalle ? `<p><span class="label">Mahalle:</span> ${item.mahalle}</p>` : ''}
-        ${item.region ? `<p><span class="label">Bölge:</span> ${item.region}</p>` : ''}
         ${item.access ? `<p><span class="label">Erişim:</span> ${item.access}</p>` : ''}
         <p><span class="label">Koordinat:</span> ${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</p>
         
         <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
-            <h3 style="margin-bottom: 10px;">Yakındaki Wikidata Öğeleri (${currentSearchRadius/1000} km)</h3>
             <div id="qidListContainer">
                 <div style="text-align: center; padding: 20px; color: #95a5a6;">
                     <div class="loading-spinner"></div> Aranıyor...
@@ -642,14 +640,16 @@ function displayQIDList(results) {
         let html = `<div class="qid-list">`;
         
         validQids.forEach(q => {
-            const p31Text = q.p31Label ? ` <span style="color: #7f8c8d; font-size: 10px;">(${q.p31Label})</span>` : '';
+            const p31Text = q.p31Label ? ` <span style="color: #7f8c8d; font-size: 12px;">(${q.p31Label})</span>` : '';
             
             html += `
                 <div class="qid-item" id="qid-item-${q.qid}" 
                      onmouseover="highlightQIDMarker('${q.qid}'); this.style.background='#fff3cd';" 
                      onmouseout="unhighlightQIDMarker(); this.style.background='#f8f9fa';">
-                    <a href="https://www.wikidata.org/wiki/${q.qid}" target="_blank">${q.qid}</a> - ${q.label}${p31Text}
-                    <br><small style="color: #7f8c8d;">Uzaklık: ${q.distance}m</small>
+                    <div style="font-size: 14px; font-weight: 600;">
+                        <a href="https://www.wikidata.org/wiki/${q.qid}" target="_blank" style="color: #2c3e50;">${q.qid}</a> - ${q.label}${p31Text}
+                    </div>
+                    <small style="color: #7f8c8d; font-size: 12px;">Uzaklık: ${q.distance}m</small>
                     <div style="margin-top: 5px; display: flex; gap: 5px;">
                         <a href="#" onclick="openAddKEModal('${q.qid}', ${activeKEMarker.keItem.id}); return false;" 
                            style="flex: 1; padding: 4px 8px; background: #4caf50; color: white; border-radius: 3px; font-size: 10px; text-decoration: none; font-weight: bold; text-align: center;">
