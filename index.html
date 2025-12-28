@@ -108,17 +108,9 @@
             left: 60px;
             z-index: 1000;
             background: white;
-            padding: 10px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        
-        .file-upload {
-            margin-bottom: 10px;
-        }
-        
-        .file-upload input[type="file"] {
-            font-size: 12px;
         }
         
         .status {
@@ -347,19 +339,52 @@
         .modal-button.secondary:hover {
             background: #d0d0d0;
         }
+        
+        .stats-panel {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
     
     <div class="controls">
-        <div class="file-upload">
-            <label for="excelFile" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 5px;">
-                Excel Dosyası Yükle:
-            </label>
-            <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" />
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #27ae60;">
+            ✅ 10,349 Kültür Envanteri Noktası Yüklendi
         </div>
-        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
+        <div style="font-size: 11px; color: #95a5a6; margin-bottom: 10px;" id="lastUpdate">
+            Son güncelleme: Yükleniyor...
+        </div>
+        <div style="padding-top: 10px; border-top: 1px solid #ddd;">
             <label for="searchRadius" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 5px;">
                 Arama Yarıçapı (km):
             </label>
@@ -369,17 +394,50 @@
                 <span id="radiusValue" style="font-size: 13px; font-weight: 600; min-width: 45px;">1 km</span>
             </div>
         </div>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
+            <a href="new-items.html" target="_blank" style="display: block; width: 100%; padding: 8px; background: #3498db; color: white; text-align: center; text-decoration: none; border-radius: 4px; font-weight: 600; font-size: 12px;">
+                📋 Yeni Öğe Listesi
+            </a>
+        </div>
         <div id="status" class="status" style="display: none;"></div>
+    </div>
+    
+    <!-- İstatistik Paneli -->
+    <div class="stats-panel">
+        <div class="stat-item">
+            <div class="stat-value" id="totalPoints">-</div>
+            <div class="stat-label">Toplam Nokta</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="matchedPoints" style="color: #27ae60;">-</div>
+            <div class="stat-label">Eşleşmiş</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="unmatchedPoints" style="color: #e74c3c;">-</div>
+            <div class="stat-label">Eşleşmemiş</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="newItemPoints" style="color: #3498db;">-</div>
+            <div class="stat-label">Yeni Öğe</div>
+        </div>
     </div>
     
     <div class="legend">
         <div style="font-weight: 600; margin-bottom: 8px; font-size: 13px;">Lejant</div>
         <div class="legend-item">
-            <div class="legend-color ke-marker"></div>
-            <span>Kültür Envanteri</span>
+            <div class="legend-color" style="background: #e74c3c;"></div>
+            <span>KE (Eşleşmemiş)</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color qid-marker"></div>
+            <div class="legend-color" style="background: #27ae60;"></div>
+            <span>KE (Eşleşmiş)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #3498db;"></div>
+            <span>KE (Yeni Öğe)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #9b59b6;"></div>
             <span>Wikidata QID</span>
         </div>
     </div>
@@ -419,6 +477,10 @@
     <!-- SheetJS for Excel parsing -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
+    <!-- KE Encoded Data -->
+    <script src="data.js"></script>
+    
+    <!-- Main App -->
     <script src="app.js"></script>
 </body>
 </html>
