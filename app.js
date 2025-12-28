@@ -1,4 +1,6 @@
-// Global değişkenler
+// ============================================
+// GLOBAL DEĞİŞKENLER
+// ============================================
 let map;
 let keMarkers = L.markerClusterGroup({
     spiderfyOnMaxZoom: true,
@@ -12,8 +14,50 @@ let loadedQidClusters = new Set();
 let activeKEMarker = null;
 let searchCircle = null;
 let currentSearchRadius = 1000; // Metre
+let currentUser = null;
 
-// Haritayı başlat
+// Firebase database referansı
+const database = firebase.database();
+
+// ============================================
+// KULLANICI YÖNETİMİ (Basit - Prompt)
+// ============================================
+
+function getCurrentUser() {
+    if (currentUser) return currentUser;
+    
+    // LocalStorage'dan kontrol et
+    const saved = localStorage.getItem('userName');
+    if (saved) {
+        currentUser = {
+            name: saved,
+            userId: 'user_' + saved.replace(/\s/g, '_').toLowerCase() + '_' + Date.now().toString().slice(-6)
+        };
+        console.log(`✅ Kullanıcı: ${currentUser.name}`);
+        return currentUser;
+    }
+    
+    // İlk kullanım - isim sor
+    const name = prompt('👤 Adınızı girin:\n(Yapılanlar listesinde görünecek)');
+    if (!name || name.trim() === '') {
+        return null;
+    }
+    
+    currentUser = {
+        name: name.trim(),
+        userId: 'user_' + name.trim().replace(/\s/g, '_').toLowerCase() + '_' + Date.now().toString().slice(-6)
+    };
+    
+    localStorage.setItem('userName', currentUser.name);
+    console.log(`✅ Yeni kullanıcı: ${currentUser.name}`);
+    
+    return currentUser;
+}
+
+// ============================================
+// HARİTA BAŞLATMA
+// ============================================
+
 function initMap() {
     map = L.map('map').setView([39.0, 35.0], 6);
     
@@ -28,33 +72,317 @@ function initMap() {
     
     map.on('moveend', onMapMoveEnd);
     
-    // Encoded data varsa yükle
+    // Encoded data yükle
     loadEncodedData();
     
-    // Periyodik güncelleme - her 10 saniyede GitHub'dan yeni öğeleri çek
-    // Token ile: 5000/saat limit (yeterli)
-    // Token olmadan: 60/saat limit (dikkatli kullanın veya token ekleyin)
-    setInterval(async () => {
-        console.log('🔄 Yeni öğeler kontrol ediliyor...');
-        await loadNewItemsFromStorage();
-    }, 10000); // 10 saniye
+    // Firebase realtime senkronizasyon
+    initRealtimeSync();
+    
+    // Arama yarıçapı slider
+    setupRadiusSlider();
 }
 
-// Encoded KE verisini yükle (data.js dosyasından)
+// ============================================
+// FIREBASE İŞLEMLERİ
+// ============================================
+
+function initRealtimeSync() {
+    console.log('🔥 Firebase senkronizasyon başlatılıyor...');
+    
+    // Yeni öğeleri dinle
+    database.ref('newItems').on('value', (snapshot) => {
+        const firebaseData = snapshot.val();
+        
+        if (!firebaseData) {
+            console.log('Henüz yeni öğe yok');
+            updateLastUpdate(0);
+            return;
+        }
+        
+        const newItemIds = Object.keys(firebaseData).map(id => parseInt(id));
+        
+        let updateCount = 0;
+        keData.forEach(item => {
+            const wasNewItem = item.newItem;
+            item.newItem = newItemIds.includes(item.id);
+            
+            if (item.newItem && !wasNewItem) {
+                updateCount++;
+            }
+        });
+        
+        if (updateCount > 0) {
+            console.log(`🔔 ${updateCount} yeni öğe eklendi!`);
+        }
+        
+        displayKEData();
+        updateStats();
+        updateLastUpdate(updateCount);
+    });
+    
+    // Eşleştirmeleri dinle
+    database.ref('matches').on('value', (snapshot) => {
+        const matchData = snapshot.val();
+        
+        if (!matchData) {
+            return;
+        }
+        
+        const matchedIds = Object.keys(matchData).map(id => parseInt(id));
+        
+        let updateCount = 0;
+        keData.forEach(item => {
+            const wasMatched = item.matched;
+            item.matched = matchedIds.includes(item.id);
+            
+            if (item.matched && !wasMatched) {
+                updateCount++;
+            }
+        });
+        
+        if (updateCount > 0) {
+            console.log(`🟢 ${updateCount} yeni eşleştirme!`);
+        }
+        
+        displayKEData();
+        updateStats();
+    });
+}
+
+function updateLastUpdate(count) {
+    const lastUpdateEl = document.getElementById('lastUpdate');
+    if (!lastUpdateEl) return;
+    
+    const now = new Date().toLocaleTimeString('tr-TR');
+    lastUpdateEl.textContent = `Son güncelleme: ${now} 🔥`;
+    lastUpdateEl.style.color = count > 0 ? '#27ae60' : '#95a5a6';
+}
+
+async function markAsNewItem(keId) {
+    const item = keData.find(i => i.id === keId);
+    if (!item) return;
+    
+    // Kullanıcı al
+    const user = getCurrentUser();
+    if (!user) {
+        alert('❌ İşlem iptal edildi');
+        return;
+    }
+    
+    // Firebase'e ekle
+    try {
+        await database.ref('newItems/' + keId).set({
+            keId: keId,
+            timestamp: Date.now(),
+            userName: user.name,
+            userId: user.userId,
+            name: item.name || '',
+            city: item.city || '',
+            district: item.district || ''
+        });
+        
+        // Kullanıcı istatistiklerini güncelle
+        await updateUserStats('newItem');
+        
+        // Yerel güncelleme
+        item.newItem = true;
+        item.matched = false;
+        
+        displayKEData();
+        updateStats();
+        
+        alert(`✅ KE ID ${keId} yeni öğe olarak eklendi!`);
+        
+    } catch (error) {
+        console.error('Firebase hatası:', error);
+        alert('❌ Eklenemedi: ' + error.message);
+    }
+}
+
+async function saveMatch(keId, qid) {
+    const user = getCurrentUser();
+    if (!user) {
+        alert('❌ Eşleştirme yapmak için isim girmelisiniz!');
+        return;
+    }
+    
+    const item = keData.find(i => i.id === keId);
+    if (!item) return;
+    
+    try {
+        await database.ref('matches/' + keId).set({
+            keId: keId,
+            qid: qid,
+            timestamp: Date.now(),
+            userName: user.name,
+            userId: user.userId,
+            name: item.name || ''
+        });
+        
+        await updateUserStats('match');
+        
+        item.matched = true;
+        item.newItem = false;
+        
+        displayKEData();
+        updateStats();
+        
+        console.log(`✅ Eşleştirme kaydedildi: KE ${keId} → ${qid}`);
+        
+    } catch (error) {
+        console.error('Eşleştirme hatası:', error);
+    }
+}
+
+async function updateUserStats(type) {
+    if (!currentUser) return;
+    
+    const userRef = database.ref('users/' + currentUser.userId);
+    const snapshot = await userRef.once('value');
+    const userData = snapshot.val() || {
+        name: currentUser.name,
+        matchCount: 0,
+        newItemCount: 0,
+        totalCount: 0,
+        lastActivity: 0
+    };
+    
+    if (type === 'match') {
+        userData.matchCount++;
+    } else if (type === 'newItem') {
+        userData.newItemCount++;
+    }
+    
+    userData.totalCount++;
+    userData.lastActivity = Date.now();
+    
+    await userRef.set(userData);
+}
+
+// ============================================
+// YAPILANLAR MODAL
+// ============================================
+
+async function showActivities() {
+    const modal = document.getElementById('activitiesModal');
+    const body = document.getElementById('activitiesBody');
+    
+    modal.classList.add('active');
+    body.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">⏳ Yükleniyor...</div>';
+    
+    try {
+        const usersSnapshot = await database.ref('users').once('value');
+        const users = usersSnapshot.val() || {};
+        
+        const sortedUsers = Object.values(users)
+            .sort((a, b) => b.totalCount - a.totalCount)
+            .slice(0, 10);
+        
+        const newItemsSnapshot = await database.ref('newItems').orderByChild('timestamp').limitToLast(10).once('value');
+        const matchesSnapshot = await database.ref('matches').orderByChild('timestamp').limitToLast(10).once('value');
+        
+        const activities = [];
+        
+        newItemsSnapshot.forEach(child => {
+            activities.push({ type: 'new', ...child.val() });
+        });
+        
+        matchesSnapshot.forEach(child => {
+            activities.push({ type: 'match', ...child.val() });
+        });
+        
+        activities.sort((a, b) => b.timestamp - a.timestamp);
+        
+        let html = '<div class="activities-section">';
+        html += '<h3>👥 EN AKTIF KULLANICILAR</h3>';
+        
+        if (sortedUsers.length === 0) {
+            html += '<div style="text-align: center; padding: 20px; color: #95a5a6;">Henüz kullanıcı yok</div>';
+        } else {
+            sortedUsers.forEach((user, index) => {
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                html += `
+                    <div class="user-item">
+                        <div class="user-name">
+                            ${medal} <span>#${index + 1}</span> <span>${user.name}</span>
+                        </div>
+                        <div class="user-score">
+                            <div class="user-total">${user.totalCount} işlem</div>
+                            <div class="user-breakdown">${user.matchCount} eşleş. + ${user.newItemCount} yeni</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += '</div>';
+        
+        html += '<div class="activities-section">';
+        html += '<h3>⏰ SON İŞLEMLER</h3>';
+        
+        if (activities.length === 0) {
+            html += '<div style="text-align: center; padding: 20px; color: #95a5a6;">Henüz işlem yok</div>';
+        } else {
+            activities.slice(0, 10).forEach(activity => {
+                const icon = activity.type === 'match' ? '🟢' : '🔵';
+                const action = activity.type === 'match' 
+                    ? `KE ${activity.keId} → ${activity.qid}` 
+                    : `KE ${activity.keId} yeni öğe`;
+                const timeAgo = getTimeAgo(activity.timestamp);
+                
+                html += `
+                    <div class="activity-item">
+                        <div>
+                            ${icon} <span class="activity-user">${activity.userName}</span>
+                            <div class="activity-action">${action}</div>
+                        </div>
+                        <div class="activity-time">${timeAgo}</div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += '</div>';
+        body.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Yapılanlar yüklenirken hata:', error);
+        body.innerHTML = '<div style="text-align: center; padding: 40px; color: #e74c3c;">❌ Yüklenemedi</div>';
+    }
+}
+
+function closeActivities() {
+    document.getElementById('activitiesModal').classList.remove('active');
+}
+
+function getTimeAgo(timestamp) {
+    const diff = Date.now() - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return 'Az önce';
+    if (minutes < 60) return `${minutes} dk önce`;
+    if (hours < 24) return `${hours} saat önce`;
+    return `${days} gün önce`;
+}
+
+// ============================================
+// DATA YÜKLEME
+// ============================================
+
 function loadEncodedData() {
     if (typeof encodedKEData === 'undefined') {
-        console.log('No encoded data found. Use Excel upload or add data.js');
+        console.log('No encoded data found');
         return;
     }
     
     try {
-        // Base64 decode
         const decoded = atob(encodedKEData);
         const data = JSON.parse(decoded);
         
         console.log(`✅ Loaded ${data.length} points from encoded data`);
         
-        // Format: {i: id, n: name, t: type, la: lat, lo: lng, c: country, r: region, ci: city, d: district, m: mahalle, a: access}
         keData = data.map(point => ({
             id: point.i,
             name: point.n || '',
@@ -68,14 +396,11 @@ function loadEncodedData() {
             mahalle: point.m || '',
             access: point.a || '',
             matched: false,
-            newItem: false  // Yeni öğe mi?
+            newItem: false
         }));
         
         displayKEData();
         updateStats();
-        
-        // LocalStorage'dan yeni öğeleri yükle
-        loadNewItemsFromStorage();
         
         console.log('Sample data:', keData[0]);
         
@@ -84,65 +409,10 @@ function loadEncodedData() {
     }
 }
 
-// Excel dosyası yükleme (opsiyonel - encoded data varsa gerek yok)
-document.getElementById('excelFile').addEventListener('change', handleFileUpload);
+// ============================================
+// HARİTA GÖSTERİM
+// ============================================
 
-function handleFileUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-        
-        processExcelData(jsonData);
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-function processExcelData(data) {
-    keData = data.map((row, index) => {
-        // Sütun isimlerini esnek şekilde bul
-        const keId = row['KE ID'] || row['ke_id'] || row['ID'] || row['id'];
-        const name = row['Başlık'] || row['baslik'] || row['name'] || row['Name'];
-        const type = row['Türler'] || row['turler'] || row['type'] || row['Type'];
-        const lat = row['Lat'] || row['lat'] || row['Latitude'] || row['latitude'];
-        const lng = row['Lng'] || row['lng'] || row['Longitude'] || row['longitude'];
-        const country = row['Ülke'] || row['ulke'] || row['country'] || row['Country'];
-        const region = row['Bölge'] || row['bolge'] || row['region'] || row['Region'];
-        const city = row['İl'] || row['il'] || row['city'] || row['City'];
-        const district = row['İlçe'] || row['ilce'] || row['district'] || row['District'];
-        const mahalle = row['Mahalle'] || row['mahalle'] || row['neighborhood'];
-        const access = row['Erişim Durumu'] || row['erisim'] || row['access'];
-        
-        return {
-            id: keId,
-            name: name || '',
-            type: type || '',
-            lat: parseFloat(lat),
-            lng: parseFloat(lng),
-            country: country || '',
-            region: region || '',
-            city: city || '',
-            district: district || '',
-            mahalle: mahalle || '',
-            access: access || '',
-            matched: false,
-            index: index
-        };
-    }).filter(item => item.id && !isNaN(item.lat) && !isNaN(item.lng));
-    
-    console.log(`Processed ${keData.length} points from Excel with full data`);
-    console.log('Sample:', keData[0]);
-    
-    displayKEData();
-    updateStats();
-}
-
-// KE verilerini haritada göster
 function displayKEData() {
     keMarkers.clearLayers();
     
@@ -164,7 +434,6 @@ function displayKEData() {
         
         const marker = L.marker([item.lat, item.lng], { icon: icon });
         
-        // Zengin popup içeriği
         const statusBadge = item.newItem 
             ? '<span style="background: #3498db; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">YENİ ÖĞE</span>'
             : item.matched 
@@ -206,36 +475,29 @@ function displayKEData() {
         keMarkers.addLayer(marker);
     });
     
-    console.log(`Displayed ${keData.length} KE markers with full info`);
+    console.log(`Displayed ${keData.length} KE markers`);
 }
 
-// KE marker seçildiğinde
 function selectKEMarker(marker, item) {
-    // Önceki aktif marker'ı sıfırla
     if (activeKEMarker) {
         updateMarkerColor(activeKEMarker, activeKEMarker.keItem.matched);
     }
     
-    // Yeni marker'ı aktif yap
     activeKEMarker = marker;
     updateMarkerColor(marker, item.matched, true);
     
-    // Arama çemberini göster
     showSearchCircle(item.lat, item.lng, currentSearchRadius);
-    
-    // Yakındaki QID'leri yükle
     loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
     
-    console.log(`Selected KE ${item.id} at ${item.lat}, ${item.lng}`);
+    console.log(`Selected KE ${item.id}`);
 }
 
-// Marker rengini güncelle
 function updateMarkerColor(marker, matched, active = false) {
     let color;
     if (active) {
-        color = '#3498db'; // Mavi (aktif)
+        color = '#3498db';
     } else {
-        color = matched ? '#27ae60' : '#e74c3c'; // Yeşil/Kırmızı
+        color = matched ? '#27ae60' : '#e74c3c';
     }
     
     const icon = L.divIcon({
@@ -247,7 +509,6 @@ function updateMarkerColor(marker, matched, active = false) {
     marker.setIcon(icon);
 }
 
-// Arama çemberini göster
 function showSearchCircle(lat, lng, radius) {
     if (searchCircle) {
         map.removeLayer(searchCircle);
@@ -263,7 +524,6 @@ function showSearchCircle(lat, lng, radius) {
     }).addTo(map);
 }
 
-// Yakındaki QID'leri Wikidata'dan yükle
 async function loadNearbyQIDs(lat, lng, radius) {
     qidMarkers.clearLayers();
     
@@ -295,7 +555,6 @@ async function loadNearbyQIDs(lat, lng, radius) {
     }
 }
 
-// QID marker'larını göster
 function displayQIDMarkers(results) {
     results.forEach(result => {
         const qid = result.item.value.split('/').pop();
@@ -322,12 +581,10 @@ function displayQIDMarkers(results) {
     console.log(`Displayed ${results.length} QID markers`);
 }
 
-// Harita hareket ettiğinde
 function onMapMoveEnd() {
-    // Gerekirse burada lazy loading yapılabilir
+    // Lazy loading
 }
 
-// İstatistikleri güncelle
 function updateStats() {
     const matched = keData.filter(item => item.matched).length;
     const newItems = keData.filter(item => item.newItem).length;
@@ -340,219 +597,24 @@ function updateStats() {
     document.getElementById('newItemPoints').textContent = newItems.toLocaleString();
 }
 
-// Arama yarıçapı kontrolü
-const radiusSlider = document.getElementById('searchRadius');
-const radiusValue = document.getElementById('radiusValue');
-
-radiusSlider.addEventListener('input', (e) => {
-    const kmValue = parseFloat(e.target.value);
-    currentSearchRadius = kmValue * 1000;
-    radiusValue.textContent = `${kmValue} km`;
+function setupRadiusSlider() {
+    const radiusSlider = document.getElementById('searchRadius');
+    const radiusValue = document.getElementById('radiusValue');
     
-    if (activeKEMarker && activeKEMarker.keItem) {
-        const item = activeKEMarker.keItem;
-        showSearchCircle(item.lat, item.lng, currentSearchRadius);
-        loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
-    }
-});
+    radiusSlider.addEventListener('input', (e) => {
+        const kmValue = parseFloat(e.target.value);
+        currentSearchRadius = kmValue * 1000;
+        radiusValue.textContent = `${kmValue} km`;
+        
+        if (activeKEMarker && activeKEMarker.keItem) {
+            const item = activeKEMarker.keItem;
+            showSearchCircle(item.lat, item.lng, currentSearchRadius);
+            loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
+        }
+    });
+}
 
-// Sayfa yüklendiğinde haritayı başlat
+// ============================================
+// SAYFA BAŞLATMA
+// ============================================
 document.addEventListener('DOMContentLoaded', initMap);
-
-// GitHub configuration
-const GITHUB_REPO = 'Sadrettin86/reconciliation';
-const GITHUB_FILE = 'yeni-ogeler.txt';
-
-// Yeni öğe olarak işaretle
-async function markAsNewItem(keId) {
-    const item = keData.find(i => i.id === keId);
-    if (!item) return;
-    
-    // Token kontrolü
-    let token = localStorage.getItem('githubToken');
-    if (!token) {
-        token = prompt('GitHub Personal Access Token girin:\n\n1. GitHub.com → Settings → Developer settings\n2. Personal access tokens → Generate new token\n3. Scope: "repo" seçin\n4. Token\'ı kopyalayıp buraya yapıştırın');
-        if (!token) {
-            alert('❌ Token olmadan yeni öğe eklenemez!');
-            return;
-        }
-        localStorage.setItem('githubToken', token);
-    }
-    
-    // Durumu güncelle
-    item.newItem = true;
-    item.matched = false;
-    
-    // GitHub'a commit et
-    try {
-        await addToGitHubFile(keId, token);
-        
-        // Haritayı güncelle
-        displayKEData();
-        updateStats();
-        
-        // Bildirim
-        alert(`✅ KE ID ${keId} "Yeni Öğe" olarak işaretlendi ve GitHub'a eklendi!\n\nhttps://github.com/${GITHUB_REPO}/blob/main/${GITHUB_FILE}`);
-    } catch (error) {
-        console.error('GitHub commit hatası:', error);
-        
-        if (error.message.includes('401')) {
-            // Token geçersiz
-            localStorage.removeItem('githubToken');
-            alert('❌ GitHub token geçersiz! Lütfen yeni bir token alın ve tekrar deneyin.');
-        } else {
-            alert('❌ GitHub\'a eklenirken hata oluştu: ' + error.message);
-        }
-    }
-}
-
-// GitHub'a dosya commit et
-async function addToGitHubFile(keId, token) {
-    // 1. Önce mevcut dosyayı al
-    let currentContent = '';
-    let currentSha = null;
-    
-    try {
-        const getResponse = await fetch(
-            `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            }
-        );
-        
-        if (getResponse.ok) {
-            const data = await getResponse.json();
-            currentContent = atob(data.content); // Base64 decode
-            currentSha = data.sha;
-            
-            // Zaten var mı kontrol et
-            if (currentContent.includes(keId.toString())) {
-                console.log(`KE ID ${keId} zaten listede`);
-                return;
-            }
-        }
-    } catch (error) {
-        console.log('Dosya yok, yeni oluşturulacak');
-    }
-    
-    // 2. Yeni satırı ekle
-    const newContent = currentContent + keId + '\n';
-    const encodedContent = btoa(unescape(encodeURIComponent(newContent))); // Base64 encode
-    
-    // 3. Commit et
-    const commitData = {
-        message: `Yeni öğe eklendi: KE ID ${keId}`,
-        content: encodedContent
-    };
-    
-    if (currentSha) {
-        commitData.sha = currentSha; // Dosya varsa SHA gerekli
-    }
-    
-    const putResponse = await fetch(
-        `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`,
-        {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(commitData)
-        }
-    );
-    
-    if (!putResponse.ok) {
-        const error = await putResponse.json();
-        throw new Error(error.message || 'GitHub commit başarısız');
-    }
-    
-    console.log(`✅ KE ID ${keId} GitHub'a eklendi`);
-    return putResponse.json();
-}
-
-// LocalStorage'dan yeni öğeleri yükle (sayfa yüklenirken)
-async function loadNewItemsFromStorage() {
-    // GitHub'dan yeni öğeleri çek
-    try {
-        // Token varsa kullan (rate limit 5000/saat), yoksa devam et (60/saat)
-        const token = localStorage.getItem('githubToken');
-        const headers = {
-            'Accept': 'application/vnd.github.v3+json'
-        };
-        
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-        
-        const response = await fetch(
-            `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`,
-            { headers }
-        );
-        
-        // Rate limit bilgisini kontrol et
-        const remaining = response.headers.get('X-RateLimit-Remaining');
-        const limit = response.headers.get('X-RateLimit-Limit');
-        
-        console.log(`📊 GitHub API: ${remaining}/${limit} kaldı`);
-        
-        if (response.ok) {
-            const data = await response.json();
-            const content = atob(data.content); // Base64 decode
-            const newItemIds = content.trim().split('\n').map(id => parseInt(id)).filter(id => !isNaN(id));
-            
-            let updateCount = 0;
-            keData.forEach(item => {
-                const wasNewItem = item.newItem;
-                item.newItem = newItemIds.includes(item.id);
-                
-                if (item.newItem && !wasNewItem) {
-                    updateCount++;
-                }
-            });
-            
-            console.log(`Loaded ${newItemIds.length} new items from GitHub`);
-            
-            if (updateCount > 0) {
-                console.log(`🔔 ${updateCount} yeni öğe eklendi!`);
-            }
-            
-            // Son güncelleme zamanını göster
-            const lastUpdateEl = document.getElementById('lastUpdate');
-            if (lastUpdateEl) {
-                const now = new Date().toLocaleTimeString('tr-TR');
-                const tokenStatus = token ? '🔑' : '';
-                lastUpdateEl.textContent = `Son güncelleme: ${now} ${tokenStatus}`;
-                lastUpdateEl.style.color = updateCount > 0 ? '#27ae60' : '#95a5a6';
-            }
-            
-            // Haritayı güncelle
-            displayKEData();
-            updateStats();
-        } else if (response.status === 403) {
-            // Rate limit aşıldı
-            console.warn('⚠️ GitHub API rate limit aşıldı!');
-            const lastUpdateEl = document.getElementById('lastUpdate');
-            if (lastUpdateEl) {
-                lastUpdateEl.textContent = '⚠️ Rate limit aşıldı';
-                lastUpdateEl.style.color = '#e74c3c';
-            }
-        } else {
-            // Dosya henüz yok
-            const lastUpdateEl = document.getElementById('lastUpdate');
-            if (lastUpdateEl) {
-                lastUpdateEl.textContent = 'Henüz yeni öğe yok';
-                lastUpdateEl.style.color = '#95a5a6';
-            }
-        }
-    } catch (error) {
-        console.log('GitHub dosyası yüklenemedi:', error);
-        const lastUpdateEl = document.getElementById('lastUpdate');
-        if (lastUpdateEl) {
-            lastUpdateEl.textContent = 'Güncelleme başarısız';
-            lastUpdateEl.style.color = '#e74c3c';
-        }
-    }
-}
