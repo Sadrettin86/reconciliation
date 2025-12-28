@@ -553,7 +553,9 @@ function showInfoPanel(item) {
     panel.style.display = 'block';
     
     let html = `
-        <h2>${item.name || 'İsimsiz'}</h2>
+        <h2 style="cursor: pointer; color: #2c3e50;" onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" title="Kültür Envanteri'nde aç">
+            ${item.name || 'İsimsiz'}
+        </h2>
         <p><span class="label">KE ID:</span> ${item.id}</p>
         ${item.type ? `<p><span class="label">Türler:</span> ${item.type}</p>` : ''}
         ${item.city ? `<p><span class="label">İl:</span> ${item.city}</p>` : ''}
