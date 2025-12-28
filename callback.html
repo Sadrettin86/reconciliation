@@ -138,6 +138,26 @@
         const message = document.getElementById('message');
         const status = document.getElementById('status');
         
+        // Geri sayım fonksiyonu
+        function countdown(seconds, callback) {
+            let remaining = seconds;
+            const countdownEl = document.createElement('p');
+            countdownEl.style.fontSize = '14px';
+            countdownEl.style.marginTop = '10px';
+            countdownEl.textContent = `${remaining} saniye sonra ana sayfaya dönülecek...`;
+            status.appendChild(countdownEl);
+            
+            const interval = setInterval(() => {
+                remaining--;
+                if (remaining > 0) {
+                    countdownEl.textContent = `${remaining} saniye sonra ana sayfaya dönülecek...`;
+                } else {
+                    clearInterval(interval);
+                    callback();
+                }
+            }, 1000);
+        }
+        
         if (error) {
             // Hata
             spinner.style.display = 'none';
@@ -145,9 +165,7 @@
             message.textContent = 'Bir sorun oluştu';
             
             status.className = 'message error-message';
-            status.innerHTML = '<p style="font-size: 14px;">5 saniye sonra ana sayfaya dönülecek...</p>';
-            
-            setTimeout(() => window.location.href = '/', 5000);
+            countdown(5, () => window.location.href = '/');
             
         } else if (code) {
             // Başarılı
@@ -166,9 +184,7 @@
             message.textContent = 'Lütfen ana sayfadan tekrar deneyin';
             
             status.className = 'message error-message';
-            status.innerHTML = '<p style="font-size: 14px;">5 saniye sonra ana sayfaya dönülecek...</p>';
-            
-            setTimeout(() => window.location.href = '/', 5000);
+            countdown(5, () => window.location.href = '/');
         }
     </script>
 </body>
