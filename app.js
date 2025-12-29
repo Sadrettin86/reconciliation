@@ -90,6 +90,9 @@ function initMap() {
     
     // Arama yarıçapı slider
     setupRadiusSlider();
+    
+    // Sidebar resize localStorage
+    setupSidebarResize();
 }
 
 // Sidebar ve yarıçapı kapat
@@ -571,16 +574,14 @@ function showInfoPanel(item) {
         <h2 style="cursor: pointer; color: #2c3e50;" onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" title="Kültür Envanteri'nde aç">
             ${item.name || 'İsimsiz'}
         </h2>
-        <p><span class="label">KE ID:</span> ${item.id}</p>
         ${item.type ? `<p><span class="label">Türler:</span> ${item.type}</p>` : ''}
         ${item.city ? `<p><span class="label">İl:</span> ${item.city}</p>` : ''}
         ${item.district ? `<p><span class="label">İlçe:</span> ${item.district}</p>` : ''}
         ${item.mahalle ? `<p><span class="label">Mahalle:</span> ${item.mahalle}</p>` : ''}
         ${item.access ? `<p><span class="label">Erişim:</span> ${item.access}</p>` : ''}
-        <p><span class="label">Koordinat:</span> ${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</p>
         
         <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
-            <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; margin-bottom: 15px;">
+            <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; margin-bottom: 15px;">
                 ➕ Yeni Öğe Olarak İşaretle
             </button>
             <h3 style="margin-bottom: 10px;">Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)</h3>
@@ -676,7 +677,7 @@ function displayQIDList(results) {
                     </div>
                     <div style="margin-top: 5px;">
                         <a href="#" onclick="openAddKEModal('${q.qid}', ${activeKEMarker.keItem.id}); return false;" 
-                           style="display: block; padding: 6px 12px; background: #4caf50; color: white; border-radius: 3px; font-size: 11px; text-decoration: none; font-weight: bold; text-align: center;">
+                           style="display: block; padding: 8px 12px; background: #4caf50; color: white; border-radius: 3px; font-size: 11px; text-decoration: none; font-weight: bold; text-align: center;">
                             + KE ID Ekle
                         </a>
                     </div>
@@ -925,6 +926,31 @@ function setupRadiusSlider() {
             loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
         }
     });
+}
+
+// Sidebar resize localStorage
+function setupSidebarResize() {
+    const panel = document.getElementById('infoPanel');
+    if (!panel) return;
+    
+    // localStorage'dan yükle
+    const savedHeight = localStorage.getItem('sidebarHeight');
+    if (savedHeight && window.innerWidth > 768) {
+        panel.style.height = savedHeight + 'px';
+    }
+    
+    // ResizeObserver ile boyut değişimini izle
+    const resizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+            const height = entry.contentRect.height;
+            // Sadece desktop'ta kaydet (mobilde 50vh sabit)
+            if (window.innerWidth > 768 && height >= 300) {
+                localStorage.setItem('sidebarHeight', Math.round(height));
+            }
+        }
+    });
+    
+    resizeObserver.observe(panel);
 }
 
 // ============================================
