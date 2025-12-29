@@ -456,14 +456,14 @@
     <div id="map"></div>
     
     <div class="controls">
-        <div style="padding-top: 10px;">
+        <div>
             <label for="searchRadius" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 5px;">
-                Arama Yarıçapı (km):
+                Arama Yarıçapı (m):
             </label>
             <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="range" id="searchRadius" min="0.5" max="2" step="0.1" value="1" 
+                <input type="range" id="searchRadius" min="50" max="1000" step="50" value="100" 
                        style="flex: 1;" />
-                <span id="radiusValue" style="font-size: 13px; font-weight: 600; min-width: 45px;">1 km</span>
+                <span id="radiusValue" style="font-size: 13px; font-weight: 600; min-width: 55px;">100 m</span>
             </div>
         </div>
         <div id="status" class="status" style="display: none;"></div>
