@@ -64,7 +64,10 @@ function initMap() {
     const zoomControlPosition = isMobile ? 'bottomright' : 'topleft';
     
     map = L.map('map', {
-        zoomControl: false
+        zoomControl: false,
+        doubleClickZoom: true,  // Çift tıklama zoom
+        tap: true,              // Mobil dokunma
+        tapTolerance: 15        // Dokunma toleransı
     }).setView([39.0, 35.0], 6);
     
     // Zoom kontrolü ekle (pozisyon belirterek)
