@@ -58,6 +58,7 @@
                 min-height: 20vh;
                 border-radius: 0 0 16px 16px;
                 resize: vertical;
+                z-index: 1001;
             }
         }
         
@@ -124,13 +125,28 @@
                 display: none !important;
             }
             .controls {
-                top: 10px;
-                left: 50%;
-                transform: translateX(-50%);
-                z-index: 1001;
+                display: none !important;
             }
             #map {
                 height: 100vh !important;
+            }
+        }
+        
+        .mobile-radius-slider {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-radius-slider {
+                display: block;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                padding: 6px 10px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+                z-index: 1000;
             }
         }
         
