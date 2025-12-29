@@ -13,7 +13,7 @@ let keData = [];
 let loadedQidClusters = new Set();
 let activeKEMarker = null;
 let searchCircle = null;
-let currentSearchRadius = 1000; // Metre
+let currentSearchRadius = 100; // Varsayılan 100 metre (localStorage'dan yüklenecek)
 let currentUser = null;
 
 // Firebase database referansı
@@ -889,19 +889,39 @@ function setupRadiusSlider() {
     const radiusSlider = document.getElementById('searchRadius');
     const radiusValue = document.getElementById('radiusValue');
     
+    // localStorage'dan yükle (varsayılan: 100m)
+    const savedRadius = localStorage.getItem('searchRadius');
+    if (savedRadius) {
+        currentSearchRadius = parseInt(savedRadius);
+        radiusSlider.value = currentSearchRadius;
+        radiusValue.textContent = `${currentSearchRadius} m`;
+    } else {
+        currentSearchRadius = 100; // Varsayılan 100m
+        radiusSlider.value = 100;
+        radiusValue.textContent = '100 m';
+    }
+    
     radiusSlider.addEventListener('input', (e) => {
-        const kmValue = parseFloat(e.target.value);
-        currentSearchRadius = kmValue * 1000;
-        radiusValue.textContent = `${kmValue} km`;
+        const meterValue = parseInt(e.target.value);
+        currentSearchRadius = meterValue;
+        radiusValue.textContent = `${meterValue} m`;
+        
+        // localStorage'a kaydet
+        localStorage.setItem('searchRadius', meterValue);
         
         if (activeKEMarker && activeKEMarker.keItem) {
             const item = activeKEMarker.keItem;
             showSearchCircle(item.lat, item.lng, currentSearchRadius);
-    
-    // Yarıçapa göre zoom yap
-    const radiusKm = currentSearchRadius / 1000;
-    let zoomLevel = radiusKm <= 0.5 ? 17 : (radiusKm <= 1 ? 16 : 15);
-    map.setView([item.lat, item.lng], zoomLevel, { animate: true, duration: 0.5 });
+            
+            // Yarıçapa göre zoom yap
+            const radiusKm = currentSearchRadius / 1000;
+            let zoomLevel;
+            if (radiusKm <= 0.1) zoomLevel = 18;
+            else if (radiusKm <= 0.2) zoomLevel = 17;
+            else if (radiusKm <= 0.5) zoomLevel = 16;
+            else zoomLevel = 15;
+            
+            map.setView([item.lat, item.lng], zoomLevel, { animate: true, duration: 0.5 });
             loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
         }
     });
