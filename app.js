@@ -93,6 +93,11 @@ function initMap() {
     
     // Sidebar resize localStorage
     setupSidebarResize();
+    
+    // Mobilde slider'ı başlangıçta göster
+    if (window.innerWidth <= 768) {
+        showMobileSlider();
+    }
 }
 
 // Sidebar ve yarıçapı kapat
@@ -625,6 +630,11 @@ function showInfoPanel(item) {
     `;
     
     panel.innerHTML = html;
+    
+    // Mobilde slider'ı göster
+    if (isMobile) {
+        showMobileSlider();
+    }
 }
 
 // QID listesini güncelle
@@ -959,7 +969,75 @@ function setupRadiusSlider() {
     });
 }
 
-// Sidebar resize localStorage
+// Mobilde slider göster
+function showMobileSlider() {
+    let slider = document.getElementById('mobileRadiusSlider');
+    
+    if (!slider) {
+        // Slider yoksa oluştur
+        slider = document.createElement('div');
+        slider.id = 'mobileRadiusSlider';
+        slider.className = 'mobile-radius-slider';
+        slider.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 11px; font-weight: 600; color: #555; white-space: nowrap; min-width: 100px;">
+                    Yarıçap: <span id="mobileRadiusValue">${currentSearchRadius}m</span>
+                </span>
+                <input type="range" id="mobileSearchRadius" min="50" max="1000" step="50" value="${currentSearchRadius}" 
+                       style="flex: 1;" 
+                       oninput="updateMobileRadius(this.value)" />
+            </div>
+        `;
+        document.body.appendChild(slider);
+    } else {
+        // Slider varsa sadece değeri güncelle
+        const mobileSlider = document.getElementById('mobileSearchRadius');
+        const mobileValue = document.getElementById('mobileRadiusValue');
+        if (mobileSlider) mobileSlider.value = currentSearchRadius;
+        if (mobileValue) mobileValue.textContent = `${currentSearchRadius}m`;
+    }
+}
+
+// Mobilde arama yarıçapı değiştiğinde
+function updateMobileRadius(value) {
+    const meterValue = parseInt(value);
+    currentSearchRadius = meterValue;
+    
+    // Mobil slider değerini güncelle
+    const mobileValueSpan = document.getElementById('mobileRadiusValue');
+    if (mobileValueSpan) {
+        mobileValueSpan.textContent = `${meterValue}m`;
+    }
+    
+    // Desktop slider'ı da senkronize et (varsa)
+    const desktopSlider = document.getElementById('searchRadius');
+    if (desktopSlider) {
+        desktopSlider.value = meterValue;
+    }
+    const desktopValue = document.getElementById('radiusValue');
+    if (desktopValue) {
+        desktopValue.textContent = `${meterValue} m`;
+    }
+    
+    // localStorage'a kaydet
+    localStorage.setItem('searchRadius', meterValue);
+    
+    // Aktif marker varsa çemberi güncelle
+    if (activeKEMarker && activeKEMarker.keItem) {
+        const item = activeKEMarker.keItem;
+        showSearchCircle(item.lat, item.lng, currentSearchRadius);
+        
+        // Mobilde çemberi tekrar ortala
+        if (window.innerWidth <= 768) {
+            updateMobileCirclePosition();
+        }
+        
+        // QID'leri tekrar yükle
+        loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
+    }
+}
+
+// Mobil sidebar resize localStorage
 function setupSidebarResize() {
     const panel = document.getElementById('infoPanel');
     if (!panel) return;
