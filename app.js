@@ -545,16 +545,20 @@ function selectKEMarker(marker, item) {
     const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
-        // Mobilde: Sidebar üstte 50vh, harita altta 50vh
-        // Çemberi haritanın ortasına (altta 50%) yerleştir
+        // Mobilde: Sidebar dinamik yükseklik, harita altta
+        // Çemberi haritanın görünen kısmının ortasına yerleştir
+        const panel = document.getElementById('infoPanel');
+        const panelHeight = panel ? panel.offsetHeight : window.innerHeight * 0.5;
+        
         const mapContainer = map.getContainer();
         const mapHeight = mapContainer.offsetHeight;
+        const visibleMapHeight = mapHeight - panelHeight;
         
-        // Merkezi aşağı kaydır (haritanın görünen kısmının ortası)
-        const offsetY = mapHeight * 0.25; // Ekranın 25%'i kadar aşağı
+        // Görünen harita alanının ortasına kaydır
+        const offsetY = panelHeight + (visibleMapHeight / 2) - (mapHeight / 2);
         
         const point = map.project([item.lat, item.lng], zoomLevel);
-        point.y -= offsetY;
+        point.y += offsetY;
         const newCenter = map.unproject(point, zoomLevel);
         
         map.setView(newCenter, zoomLevel, { animate: true, duration: 0.5 });
@@ -960,24 +964,76 @@ function setupSidebarResize() {
     const panel = document.getElementById('infoPanel');
     if (!panel) return;
     
+    const isMobile = window.innerWidth <= 768;
+    
     // localStorage'dan yükle
-    const savedHeight = localStorage.getItem('sidebarHeight');
-    if (savedHeight && window.innerWidth > 768) {
-        panel.style.height = savedHeight + 'px';
+    if (isMobile) {
+        const savedMobileHeight = localStorage.getItem('sidebarHeightMobile');
+        if (savedMobileHeight) {
+            panel.style.height = savedMobileHeight + 'px';
+        }
+    } else {
+        const savedHeight = localStorage.getItem('sidebarHeight');
+        if (savedHeight) {
+            panel.style.height = savedHeight + 'px';
+        }
     }
     
     // ResizeObserver ile boyut değişimini izle
     const resizeObserver = new ResizeObserver(entries => {
         for (let entry of entries) {
             const height = entry.contentRect.height;
-            // Sadece desktop'ta kaydet (mobilde 50vh sabit)
-            if (window.innerWidth > 768 && height >= 300) {
-                localStorage.setItem('sidebarHeight', Math.round(height));
+            
+            if (window.innerWidth <= 768) {
+                // Mobilde
+                if (height >= 100) {
+                    localStorage.setItem('sidebarHeightMobile', Math.round(height));
+                    
+                    // Sidebar resize olunca çemberi tekrar ortala
+                    if (activeKEMarker && activeKEMarker.keItem) {
+                        updateMobileCirclePosition();
+                    }
+                }
+            } else {
+                // Desktop'ta
+                if (height >= 300) {
+                    localStorage.setItem('sidebarHeight', Math.round(height));
+                }
             }
         }
     });
     
     resizeObserver.observe(panel);
+}
+
+// Mobilde çemberi sidebar yüksekliğine göre ortala
+function updateMobileCirclePosition() {
+    if (!activeKEMarker || !activeKEMarker.keItem) return;
+    if (window.innerWidth > 768) return;
+    
+    const item = activeKEMarker.keItem;
+    const panel = document.getElementById('infoPanel');
+    const panelHeight = panel ? panel.offsetHeight : window.innerHeight * 0.5;
+    
+    const radiusKm = currentSearchRadius / 1000;
+    let zoomLevel;
+    if (radiusKm <= 0.1) zoomLevel = 18;
+    else if (radiusKm <= 0.2) zoomLevel = 17;
+    else if (radiusKm <= 0.5) zoomLevel = 16;
+    else zoomLevel = 15;
+    
+    const mapContainer = map.getContainer();
+    const mapHeight = mapContainer.offsetHeight;
+    const visibleMapHeight = mapHeight - panelHeight;
+    
+    // Görünen harita alanının ortasına kaydır
+    const offsetY = panelHeight + (visibleMapHeight / 2) - (mapHeight / 2);
+    
+    const point = map.project([item.lat, item.lng], zoomLevel);
+    point.y += offsetY;
+    const newCenter = map.unproject(point, zoomLevel);
+    
+    map.setView(newCenter, zoomLevel, { animate: false });
 }
 
 // ============================================
