@@ -59,7 +59,18 @@ function getCurrentUser() {
 // ============================================
 
 function initMap() {
-    map = L.map('map').setView([39.0, 35.0], 6);
+    // Mobilde zoom kontrolleri sağ altta
+    const isMobile = window.innerWidth <= 768;
+    const zoomControlPosition = isMobile ? 'bottomright' : 'topleft';
+    
+    map = L.map('map', {
+        zoomControl: false
+    }).setView([39.0, 35.0], 6);
+    
+    // Zoom kontrolü ekle (pozisyon belirterek)
+    L.control.zoom({
+        position: zoomControlPosition
+    }).addTo(map);
     
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap contributors © CARTO',
