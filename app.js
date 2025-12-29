@@ -536,23 +536,44 @@ function selectKEMarker(marker, item) {
     
     // Yarıçapa göre zoom yap
     const radiusKm = currentSearchRadius / 1000;
-    let zoomLevel = radiusKm <= 0.5 ? 17 : (radiusKm <= 1 ? 16 : 15);
+    let zoomLevel;
+    if (radiusKm <= 0.1) zoomLevel = 18;
+    else if (radiusKm <= 0.2) zoomLevel = 17;
+    else if (radiusKm <= 0.5) zoomLevel = 16;
+    else zoomLevel = 15;
     
-    // Sağ panel genişliği: 380px + 20px (right margin) = 400px
-    // Merkezi SOLA kaydır ki yarıçap panelin dışında kalsın
-    const mapContainer = map.getContainer();
-    const mapWidth = mapContainer.offsetWidth;
-    const panelWidth = 410; // 380px panel + 30px margin
+    const isMobile = window.innerWidth <= 768;
     
-    // Harita merkezini sola kaydır
-    const offsetX = panelWidth / 2;
-    
-    // Pixel koordinatını hesapla ve offset uygula
-    const point = map.project([item.lat, item.lng], zoomLevel);
-    point.x += offsetX; // ARTIYA ÇEVİRDİK - sağa kayar, merkez sola gider
-    const newCenter = map.unproject(point, zoomLevel);
-    
-    map.setView(newCenter, zoomLevel, { animate: true, duration: 0.5 });
+    if (isMobile) {
+        // Mobilde: Sidebar üstte 50vh, harita altta 50vh
+        // Çemberi haritanın ortasına (altta 50%) yerleştir
+        const mapContainer = map.getContainer();
+        const mapHeight = mapContainer.offsetHeight;
+        
+        // Merkezi aşağı kaydır (haritanın görünen kısmının ortası)
+        const offsetY = mapHeight * 0.25; // Ekranın 25%'i kadar aşağı
+        
+        const point = map.project([item.lat, item.lng], zoomLevel);
+        point.y -= offsetY;
+        const newCenter = map.unproject(point, zoomLevel);
+        
+        map.setView(newCenter, zoomLevel, { animate: true, duration: 0.5 });
+    } else {
+        // Desktop: Sağ panel genişliği: 380px + 20px (right margin) = 400px
+        // Merkezi SOLA kaydır ki yarıçap panelin dışında kalsın
+        const mapContainer = map.getContainer();
+        const panelWidth = 410; // 380px panel + 30px margin
+        
+        // Harita merkezini sola kaydır
+        const offsetX = panelWidth / 2;
+        
+        // Pixel koordinatını hesapla ve offset uygula
+        const point = map.project([item.lat, item.lng], zoomLevel);
+        point.x += offsetX; // Sağa kayar, merkez sola gider
+        const newCenter = map.unproject(point, zoomLevel);
+        
+        map.setView(newCenter, zoomLevel, { animate: true, duration: 0.5 });
+    }
     
     // Sağ paneli göster ve güncelle
     showInfoPanel(item);
@@ -570,22 +591,28 @@ function showInfoPanel(item) {
     
     panel.style.display = 'block';
     
+    // Mobil grid layout için
+    const isMobile = window.innerWidth <= 768;
+    const gridStyle = isMobile ? 'display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; font-size: 11px;' : '';
+    
     let html = `
-        <h2 style="cursor: pointer; color: #2c3e50;" onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" title="Kültür Envanteri'nde aç">
+        <h2 style="cursor: pointer; color: #2c3e50; font-size: ${isMobile ? '16px' : '18px'};" onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" title="Kültür Envanteri'nde aç">
             ${item.name || 'İsimsiz'}
         </h2>
-        ${item.type ? `<p><span class="label">Türler:</span> ${item.type}</p>` : ''}
-        ${item.city ? `<p><span class="label">İl:</span> ${item.city}</p>` : ''}
-        ${item.district ? `<p><span class="label">İlçe:</span> ${item.district}</p>` : ''}
-        ${item.mahalle ? `<p><span class="label">Mahalle:</span> ${item.mahalle}</p>` : ''}
-        ${item.access ? `<p><span class="label">Erişim:</span> ${item.access}</p>` : ''}
+        <div style="${gridStyle}">
+            ${item.type ? `<p style="margin: 3px 0;"><span class="label">Türler:</span> ${item.type}</p>` : ''}
+            ${item.city ? `<p style="margin: 3px 0;"><span class="label">İl:</span> ${item.city}</p>` : ''}
+            ${item.district ? `<p style="margin: 3px 0;"><span class="label">İlçe:</span> ${item.district}</p>` : ''}
+            ${item.mahalle ? `<p style="margin: 3px 0;"><span class="label">Mahalle:</span> ${item.mahalle}</p>` : ''}
+            ${item.access ? `<p style="margin: 3px 0;"><span class="label">Erişim:</span> ${item.access}</p>` : ''}
+        </div>
         
         <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
-            <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; margin-bottom: 15px;">
+            <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: ${isMobile ? '12px' : '13px'}; margin-bottom: 15px;">
                 ➕ Yeni Öğe Olarak İşaretle
             </button>
-            <h3 style="margin-bottom: 10px;">Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)</h3>
-            <div id="qidListContainer">
+            <h3 style="margin-bottom: 10px; font-size: ${isMobile ? '13px' : '16px'};">Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)</h3>
+            <div id="qidListContainer" style="max-height: ${isMobile ? 'none' : 'calc(100% - 250px)'}; overflow-y: auto;">
                 <div style="text-align: center; padding: 20px; color: #95a5a6;">
                     <div class="loading-spinner"></div> Aranıyor...
                 </div>
