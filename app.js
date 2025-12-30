@@ -275,9 +275,12 @@ function showNearestUnmatched(fromLat, fromLng) {
     const unmatchedItems = keData.filter(item => !item.matched && !item.newItem);
     
     if (unmatchedItems.length === 0) {
-        alert('🎉 Tebrikler! Tüm KE noktaları eşleştirildi veya yeni öğe olarak işaretlendi!');
+        showLoadingMessage('🎉 Tebrikler! Tüm KE noktaları eşleştirildi!', 2000);
         return;
     }
+    
+    // Loading mesajı göster
+    showLoadingMessage('En yakın öğeye geçiliyor...', 1000);
     
     // En yakını bul (Haversine distance)
     let nearest = null;
@@ -292,17 +295,56 @@ function showNearestUnmatched(fromLat, fromLng) {
     });
     
     if (nearest) {
-        // En yakın KE'yi haritada göster
-        map.setView([nearest.lat, nearest.lng], map.getZoom() < 16 ? 16 : map.getZoom());
-        
-        // Marker'ı bul ve tıkla
+        // 1 saniye sonra haritayı hareket ettir ve marker'a tıkla
         setTimeout(() => {
-            const marker = keMarkers.getLayers().find(m => m.keItem && m.keItem.id === nearest.id);
-            if (marker) {
-                marker.fire('click');
-            }
-        }, 300);
+            // Haritayı en yakın KE'ye götür
+            map.setView([nearest.lat, nearest.lng], map.getZoom() < 16 ? 16 : map.getZoom());
+            
+            // Marker'ı bul ve tıkla
+            setTimeout(() => {
+                const marker = keMarkers.getLayers().find(m => m.keItem && m.keItem.id === nearest.id);
+                if (marker) {
+                    marker.fire('click');  // Otomatik tıklama - çember ve sidebar açılır
+                }
+            }, 300);
+        }, 1000);
     }
+}
+
+// Loading mesajı göster
+function showLoadingMessage(message, duration) {
+    // Mevcut loading mesajını kaldır
+    const existingLoading = document.getElementById('loadingMessage');
+    if (existingLoading) {
+        existingLoading.remove();
+    }
+    
+    // Yeni loading mesajı oluştur
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'loadingMessage';
+    loadingDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 20px 40px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        text-align: center;
+    `;
+    loadingDiv.textContent = message;
+    
+    document.body.appendChild(loadingDiv);
+    
+    // Belirtilen süre sonra kaldır
+    setTimeout(() => {
+        loadingDiv.remove();
+    }, duration);
 }
 
 // Haversine distance formula (km)
