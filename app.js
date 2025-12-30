@@ -600,14 +600,13 @@ function displayKEData() {
     keMarkers.clearLayers();
     
     keData.forEach(item => {
-        let color;
-        if (item.newItem) {
-            color = '#3498db'; // Mavi - Yeni öğe
-        } else if (item.matched) {
-            color = '#27ae60'; // Yeşil - Eşleşmiş
-        } else {
-            color = '#e74c3c'; // Kırmızı - Eşleşmemiş
+        // Matched veya newItem ise marker ekleme (gizli)
+        if (item.matched || item.newItem) {
+            return;  // Skip this marker
         }
+        
+        // Sadece eşleşmemiş (kırmızı) marker'lar
+        const color = '#e74c3c'; // Kırmızı - Eşleşmemiş
         
         const icon = L.divIcon({
             className: 'ke-marker',
@@ -617,11 +616,7 @@ function displayKEData() {
         
         const marker = L.marker([item.lat, item.lng], { icon: icon });
         
-        const statusBadge = item.newItem 
-            ? '<span style="background: #3498db; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">YENİ ÖĞE</span>'
-            : item.matched 
-            ? '<span style="background: #27ae60; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">EŞLEŞMİŞ</span>'
-            : '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">EŞLEŞMEMİŞ</span>';
+        const statusBadge = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;">EŞLEŞMEMİŞ</span>';
         
         const popupContent = `
             <div style="min-width: 200px;">
@@ -641,13 +636,11 @@ function displayKEData() {
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ecf0f1;">
                     <small style="color: #95a5a6;">📍 ${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</small>
                 </div>
-                ${item.newItem ? '' : `
                 <div style="margin-top: 10px;">
                     <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
                         ➕ Yeni Öğe Olarak İşaretle
                     </button>
                 </div>
-                `}
             </div>
         `;
         
@@ -660,7 +653,8 @@ function displayKEData() {
         keMarkers.addLayer(marker);
     });
     
-    console.log(`Displayed ${keData.length} KE markers`);
+    const unmatchedCount = keData.filter(i => !i.matched && !i.newItem).length;
+    console.log(`Displayed ${unmatchedCount} unmatched KE markers (out of ${keData.length} total)`);
 }
 
 function selectKEMarker(marker, item) {
