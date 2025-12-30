@@ -280,7 +280,7 @@ function showNearestUnmatched(fromLat, fromLng) {
     }
     
     // Loading mesajı göster
-    showLoadingMessage('En yakın öğeye geçiliyor...', 1000);
+    showLoadingMessage('En yakın öğeye geçiliyor...', 1300);
     
     // En yakını bul (Haversine distance)
     let nearest = null;
@@ -297,16 +297,20 @@ function showNearestUnmatched(fromLat, fromLng) {
     if (nearest) {
         // 1 saniye sonra haritayı hareket ettir ve marker'a tıkla
         setTimeout(() => {
-            // Haritayı en yakın KE'ye götür
-            map.setView([nearest.lat, nearest.lng], map.getZoom() < 16 ? 16 : map.getZoom());
+            // Önce haritayı hareket ettir
+            map.setView([nearest.lat, nearest.lng], map.getZoom() < 16 ? 16 : map.getZoom(), {
+                animate: true,
+                duration: 0.5
+            });
             
-            // Marker'ı bul ve tıkla
+            // Harita animasyonu bitince marker'a tıkla (800ms)
             setTimeout(() => {
                 const marker = keMarkers.getLayers().find(m => m.keItem && m.keItem.id === nearest.id);
                 if (marker) {
-                    marker.fire('click');  // Otomatik tıklama - çember ve sidebar açılır
+                    // selectKEMarker direkt çağır (fire('click') yerine)
+                    selectKEMarker(marker, nearest);
                 }
-            }, 300);
+            }, 800);
         }, 1000);
     }
 }
@@ -336,12 +340,26 @@ function showLoadingMessage(message, duration) {
         z-index: 10000;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         text-align: center;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
     `;
     loadingDiv.textContent = message;
     
     document.body.appendChild(loadingDiv);
     
-    // Belirtilen süre sonra kaldır
+    // Fade-in efekti (10ms sonra opacity 1)
+    setTimeout(() => {
+        loadingDiv.style.opacity = '1';
+        loadingDiv.style.transform = 'translate(-50%, -50%) scale(1)';
+    }, 10);
+    
+    // Fade-out başlat (duration - 300ms önce)
+    setTimeout(() => {
+        loadingDiv.style.opacity = '0';
+        loadingDiv.style.transform = 'translate(-50%, -50%) scale(0.95)';
+    }, duration - 300);
+    
+    // Tamamen kaldır
     setTimeout(() => {
         loadingDiv.remove();
     }, duration);
