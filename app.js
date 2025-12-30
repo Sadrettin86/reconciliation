@@ -243,6 +243,21 @@ async function markAsNewItem(keId) {
         item.newItem = true;
         item.matched = false;
         
+        // Marker'ı haritadan kaldır
+        const marker = keMarkers.getLayers().find(m => m.keItem && m.keItem.id === keId);
+        if (marker) {
+            marker.remove();
+        }
+        
+        // Sidebar'ı kapat
+        if (activeKEMarker) {
+            activeKEMarker = null;
+            document.getElementById('infoPanel').style.display = 'none';
+        }
+        
+        // En yakın eşleşmemiş KE'yi bul ve göster
+        showNearestUnmatched(item.lat, item.lng);
+        
         displayKEData();
         updateStats();
         
@@ -252,6 +267,54 @@ async function markAsNewItem(keId) {
         console.error('Firebase hatası:', error);
         alert('❌ Eklenemedi: ' + error.message);
     }
+}
+
+// En yakın eşleşmemiş KE'yi bul ve göster
+function showNearestUnmatched(fromLat, fromLng) {
+    // Eşleşmemiş KE'leri bul
+    const unmatchedItems = keData.filter(item => !item.matched && !item.newItem);
+    
+    if (unmatchedItems.length === 0) {
+        alert('🎉 Tebrikler! Tüm KE noktaları eşleştirildi veya yeni öğe olarak işaretlendi!');
+        return;
+    }
+    
+    // En yakını bul (Haversine distance)
+    let nearest = null;
+    let minDistance = Infinity;
+    
+    unmatchedItems.forEach(item => {
+        const distance = calculateDistance(fromLat, fromLng, item.lat, item.lng);
+        if (distance < minDistance) {
+            minDistance = distance;
+            nearest = item;
+        }
+    });
+    
+    if (nearest) {
+        // En yakın KE'yi haritada göster
+        map.setView([nearest.lat, nearest.lng], map.getZoom() < 16 ? 16 : map.getZoom());
+        
+        // Marker'ı bul ve tıkla
+        setTimeout(() => {
+            const marker = keMarkers.getLayers().find(m => m.keItem && m.keItem.id === nearest.id);
+            if (marker) {
+                marker.fire('click');
+            }
+        }, 300);
+    }
+}
+
+// Haversine distance formula (km)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
 }
 
 async function saveMatch(keId, qid) {
@@ -278,6 +341,21 @@ async function saveMatch(keId, qid) {
         
         item.matched = true;
         item.newItem = false;
+        
+        // Marker'ı haritadan kaldır
+        const marker = keMarkers.getLayers().find(m => m.keItem && m.keItem.id === keId);
+        if (marker) {
+            marker.remove();
+        }
+        
+        // Sidebar'ı kapat
+        if (activeKEMarker) {
+            activeKEMarker = null;
+            document.getElementById('infoPanel').style.display = 'none';
+        }
+        
+        // En yakın eşleşmemiş KE'yi bul ve göster
+        showNearestUnmatched(item.lat, item.lng);
         
         displayKEData();
         updateStats();
@@ -795,16 +873,15 @@ function unhighlightQIDMarker() {
 
 function updateMarkerColor(marker, matched, active = false) {
     const item = marker.keItem;
-    let color;
     
-    // Renk değişmesin - orijinal rengini koru
-    if (item.newItem) {
-        color = '#3498db'; // Mavi
-    } else if (item.matched) {
-        color = '#27ae60'; // Yeşil
-    } else {
-        color = '#e74c3c'; // Kırmızı
+    // Matched veya newItem ise marker'ı gizle
+    if (item.newItem || item.matched) {
+        marker.remove();
+        return;
     }
+    
+    // Sadece eşleşmemiş (kırmızı) marker'lar görünsün
+    const color = '#e74c3c'; // Kırmızı
     
     if (active) {
         // Aktif: Kare (rounded corners) + siyah kenarlık + daha büyük + PULSE animasyon
