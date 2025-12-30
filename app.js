@@ -619,23 +619,28 @@ function showInfoPanel(item) {
     const gridStyle = isMobile ? 'display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; font-size: 11px;' : '';
     
     let html = `
-        <h2 style="cursor: pointer; color: #2c3e50; font-size: ${isMobile ? '16px' : '18px'};" onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" title="Kültür Envanteri'nde aç">
-            ${item.name || 'İsimsiz'}
-        </h2>
-        <div style="${gridStyle}">
-            ${item.type ? `<p style="margin: 3px 0;"><span class="label">Türler:</span> ${item.type}</p>` : ''}
-            ${item.city ? `<p style="margin: 3px 0;"><span class="label">İl:</span> ${item.city}</p>` : ''}
-            ${item.district ? `<p style="margin: 3px 0;"><span class="label">İlçe:</span> ${item.district}</p>` : ''}
-            ${item.mahalle ? `<p style="margin: 3px 0;"><span class="label">Mahalle:</span> ${item.mahalle}</p>` : ''}
-            ${item.access ? `<p style="margin: 3px 0;"><span class="label">Erişim:</span> ${item.access}</p>` : ''}
-        </div>
-        
-        <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
-            <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: ${isMobile ? '12px' : '13px'}; margin-bottom: 15px;">
-                ➕ Yeni Öğe Olarak İşaretle
-            </button>
-            <h3 style="margin-bottom: 10px; font-size: ${isMobile ? '13px' : '16px'};">Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)</h3>
-            <div id="qidListContainer" style="overflow-y: auto;"></div>
+        <div style="display: flex; flex-direction: column; height: 100%;">
+            <div style="flex-shrink: 0;">
+                <h2 style="cursor: pointer; color: #2c3e50; font-size: ${isMobile ? '16px' : '18px'};" onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" title="Kültür Envanteri'nde aç">
+                    ${item.name || 'İsimsiz'}
+                </h2>
+                <div style="${gridStyle}">
+                    ${item.type ? `<p style="margin: 3px 0;"><span class="label">Türler:</span> ${item.type}</p>` : ''}
+                    ${item.city ? `<p style="margin: 3px 0;"><span class="label">İl:</span> ${item.city}</p>` : ''}
+                    ${item.district ? `<p style="margin: 3px 0;"><span class="label">İlçe:</span> ${item.district}</p>` : ''}
+                    ${item.mahalle ? `<p style="margin: 3px 0;"><span class="label">Mahalle:</span> ${item.mahalle}</p>` : ''}
+                    ${item.access ? `<p style="margin: 3px 0;"><span class="label">Erişim:</span> ${item.access}</p>` : ''}
+                </div>
+                
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
+                    <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: ${isMobile ? '12px' : '13px'}; margin-bottom: 15px;">
+                        ➕ Yeni Öğe Olarak İşaretle
+                    </button>
+                    <h3 style="margin-bottom: 10px; font-size: ${isMobile ? '13px' : '16px'};">Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)</h3>
+                </div>
+            </div>
+            
+            <div id="qidListContainer" style="flex: 1; overflow-y: auto; min-height: 0;"></div>
         </div>
     `;
     
@@ -738,11 +743,6 @@ function displayQIDList(results) {
         
         html += '</div>';
         container.innerHTML = html;
-        
-        // Desktop'ta QID container yüksekliğini güncelle (QID'ler yüklendikten sonra)
-        if (window.innerWidth > 768) {
-            updateQIDContainerHeight();
-        }
     });
 }
 
@@ -984,37 +984,6 @@ function setupRadiusSlider() {
     });
 }
 
-// Desktop'ta QID container yüksekliğini güncelle
-function updateQIDContainerHeight() {
-    const panel = document.getElementById('infoPanel');
-    const container = document.getElementById('qidListContainer');
-    
-    if (!panel || !container || window.innerWidth <= 768) return;
-    
-    // Panel'in içerik yüksekliği (padding hariç)
-    const panelHeight = panel.clientHeight;
-    
-    // Container'ın parent'ına göre pozisyonu
-    const containerRect = container.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-    
-    // Container'ın panel içinde başladığı yer
-    const containerTop = containerRect.top - panelRect.top;
-    
-    // Panel'in alt padding'i (15px)
-    const panelPadding = 15;
-    
-    // QID container için kalan alan
-    const availableHeight = panelHeight - containerTop - panelPadding;
-    
-    // Min 100px, max available
-    const finalHeight = Math.max(100, availableHeight);
-    
-    container.style.maxHeight = finalHeight + 'px';
-    
-    console.log('QID Container Height Updated:', finalHeight + 'px');
-}
-
 // Mobilde slider göster
 function showMobileSlider() {
     let slider = document.getElementById('mobileRadiusSlider');
@@ -1122,9 +1091,6 @@ function setupSidebarResize() {
                 // Desktop'ta
                 if (height >= 300) {
                     localStorage.setItem('sidebarHeight', Math.round(height));
-                    
-                    // Desktop'ta QID container yüksekliğini güncelle
-                    updateQIDContainerHeight();
                 }
             }
         }
