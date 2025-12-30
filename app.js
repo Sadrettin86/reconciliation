@@ -645,11 +645,6 @@ function showInfoPanel(item) {
     if (isMobile) {
         showMobileSlider();
     }
-    
-    // Desktop'ta QID container yüksekliğini ayarla
-    if (!isMobile) {
-        updateQIDContainerHeight();
-    }
 }
 
 // QID listesini güncelle
@@ -743,6 +738,11 @@ function displayQIDList(results) {
         
         html += '</div>';
         container.innerHTML = html;
+        
+        // Desktop'ta QID container yüksekliğini güncelle (QID'ler yüklendikten sonra)
+        if (window.innerWidth > 768) {
+            updateQIDContainerHeight();
+        }
     });
 }
 
@@ -991,19 +991,28 @@ function updateQIDContainerHeight() {
     
     if (!panel || !container || window.innerWidth <= 768) return;
     
-    // Panel'in toplam yüksekliği
-    const panelHeight = panel.offsetHeight;
+    // Panel'in içerik yüksekliği (padding hariç)
+    const panelHeight = panel.clientHeight;
     
-    // Container'ın üst kısmındaki içeriğin yüksekliği
-    const containerTop = container.offsetTop;
+    // Container'ın parent'ına göre pozisyonu
+    const containerRect = container.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
     
-    // Alt padding (15px)
-    const bottomPadding = 15;
+    // Container'ın panel içinde başladığı yer
+    const containerTop = containerRect.top - panelRect.top;
+    
+    // Panel'in alt padding'i (15px)
+    const panelPadding = 15;
     
     // QID container için kalan alan
-    const availableHeight = panelHeight - containerTop - bottomPadding;
+    const availableHeight = panelHeight - containerTop - panelPadding;
     
-    container.style.maxHeight = availableHeight + 'px';
+    // Min 100px, max available
+    const finalHeight = Math.max(100, availableHeight);
+    
+    container.style.maxHeight = finalHeight + 'px';
+    
+    console.log('QID Container Height Updated:', finalHeight + 'px');
 }
 
 // Mobilde slider göster
