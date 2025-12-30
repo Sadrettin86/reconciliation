@@ -261,7 +261,7 @@ async function markAsNewItem(keId) {
         displayKEData();
         updateStats();
         
-        alert(`✅ KE ID ${keId} yeni öğe olarak eklendi!`);
+        console.log(`✅ KE ID ${keId} yeni öğe olarak eklendi!`);
         
     } catch (error) {
         console.error('Firebase hatası:', error);
