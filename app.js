@@ -613,7 +613,6 @@ function showInfoPanel(item) {
     if (!panel) return;
     
     panel.style.display = 'block';
-    panel.style.position = 'relative';
     
     // Mobil grid layout için
     const isMobile = window.innerWidth <= 768;
