@@ -635,11 +635,7 @@ function showInfoPanel(item) {
                 ➕ Yeni Öğe Olarak İşaretle
             </button>
             <h3 style="margin-bottom: 10px; font-size: ${isMobile ? '13px' : '16px'};">Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)</h3>
-            <div id="qidListContainer" style="max-height: ${isMobile ? 'none' : 'calc(100% - 250px)'}; overflow-y: auto;">
-                <div style="text-align: center; padding: 20px; color: #95a5a6;">
-                    <div class="loading-spinner"></div> Aranıyor...
-                </div>
-            </div>
+            <div id="qidListContainer" style="overflow-y: auto;"></div>
         </div>
     `;
     
@@ -648,6 +644,11 @@ function showInfoPanel(item) {
     // Mobilde slider'ı göster
     if (isMobile) {
         showMobileSlider();
+    }
+    
+    // Desktop'ta QID container yüksekliğini ayarla
+    if (!isMobile) {
+        updateQIDContainerHeight();
     }
 }
 
@@ -983,6 +984,28 @@ function setupRadiusSlider() {
     });
 }
 
+// Desktop'ta QID container yüksekliğini güncelle
+function updateQIDContainerHeight() {
+    const panel = document.getElementById('infoPanel');
+    const container = document.getElementById('qidListContainer');
+    
+    if (!panel || !container || window.innerWidth <= 768) return;
+    
+    // Panel'in toplam yüksekliği
+    const panelHeight = panel.offsetHeight;
+    
+    // Container'ın üst kısmındaki içeriğin yüksekliği
+    const containerTop = container.offsetTop;
+    
+    // Alt padding (15px)
+    const bottomPadding = 15;
+    
+    // QID container için kalan alan
+    const availableHeight = panelHeight - containerTop - bottomPadding;
+    
+    container.style.maxHeight = availableHeight + 'px';
+}
+
 // Mobilde slider göster
 function showMobileSlider() {
     let slider = document.getElementById('mobileRadiusSlider');
@@ -1090,6 +1113,9 @@ function setupSidebarResize() {
                 // Desktop'ta
                 if (height >= 300) {
                     localStorage.setItem('sidebarHeight', Math.round(height));
+                    
+                    // Desktop'ta QID container yüksekliğini güncelle
+                    updateQIDContainerHeight();
                 }
             }
         }
