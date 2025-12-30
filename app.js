@@ -905,20 +905,37 @@ function displayQIDMarkers(results) {
             const marker = L.marker([lat, lng], { icon: icon });
             marker.bindPopup(`<strong>${label}</strong><br>QID: ${qid}`);
             
-            // QID marker'a mouse gelince sidebar'da highlight
+            // Hover delay için timeout referansı
+            let hoverTimeout = null;
+            
+            // QID marker'a mouse gelince sidebar'da highlight (500ms delay)
             marker.on('mouseover', () => {
-                const sidebarItem = document.getElementById('qid-item-' + qid);
-                if (sidebarItem) {
-                    // Scroll to item
-                    sidebarItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    
-                    // Turuncu highlight
-                    sidebarItem.style.background = '#ffc107';
-                    sidebarItem.style.transition = 'background 0.3s';
+                // Önceki timeout'u iptal et
+                if (hoverTimeout) {
+                    clearTimeout(hoverTimeout);
                 }
+                
+                // 500ms sonra highlight et
+                hoverTimeout = setTimeout(() => {
+                    const sidebarItem = document.getElementById('qid-item-' + qid);
+                    if (sidebarItem) {
+                        // Scroll to item
+                        sidebarItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        // Turuncu highlight
+                        sidebarItem.style.background = '#ffc107';
+                        sidebarItem.style.transition = 'background 0.3s';
+                    }
+                }, 500);
             });
             
             marker.on('mouseout', () => {
+                // Timeout'u iptal et (mouse çıktı, highlight yapma)
+                if (hoverTimeout) {
+                    clearTimeout(hoverTimeout);
+                    hoverTimeout = null;
+                }
+                
                 const sidebarItem = document.getElementById('qid-item-' + qid);
                 if (sidebarItem) {
                     // Gri'ye dön
