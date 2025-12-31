@@ -594,6 +594,8 @@ function loadEncodedData() {
         const data = JSON.parse(decoded);
         
         console.log(`✅ Loaded ${data.length} points from encoded data`);
+        console.log('RAW data first item:', data[0]);
+        console.log('Available fields:', Object.keys(data[0]));
         
         keData = data.map(point => ({
             id: point.i,
@@ -614,7 +616,8 @@ function loadEncodedData() {
         displayKEData();
         updateStats();
         
-        console.log('Sample data:', keData[0]);
+        console.log('Sample RAW data:', data[0]);
+        console.log('Sample MAPPED data:', keData[0]);
         
     } catch (error) {
         console.error('Error loading encoded data:', error);
