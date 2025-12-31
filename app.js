@@ -603,8 +603,8 @@ function loadEncodedData() {
             lng: point.lo,
             country: point.c || '',
             region: point.r || '',
-            city: point.ci || '',
-            district: point.d || '',
+            city: point.il || point.ci || '',      // il veya ci
+            district: point.ilce || point.d || '', // ilce veya d
             mahalle: point.m || '',
             access: point.a || '',
             matched: false,
