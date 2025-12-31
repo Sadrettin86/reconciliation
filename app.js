@@ -761,7 +761,7 @@ function showInfoPanel(item) {
     
     // Mobil grid layout için
     const isMobile = window.innerWidth <= 768;
-    const gridStyle = isMobile ? 'display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; font-size: 11px;' : '';
+    const gridStyle = isMobile ? 'display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; font-size: 11px;' : 'font-size: 13px;';
     
     // Google Maps footer (mobilde gizli)
     const googleMapsFooter = isMobile ? '' : `
@@ -785,11 +785,11 @@ function showInfoPanel(item) {
                 ${item.name || 'İsimsiz'}
             </h2>
             <div style="${gridStyle}">
-                ${item.type ? `<p style="margin: 3px 0;"><span class="label">Türler:</span> ${item.type}</p>` : ''}
-                ${item.city ? `<p style="margin: 3px 0;"><span class="label">İl:</span> ${item.city}</p>` : ''}
-                ${item.district ? `<p style="margin: 3px 0;"><span class="label">İlçe:</span> ${item.district}</p>` : ''}
-                ${item.mahalle ? `<p style="margin: 3px 0;"><span class="label">Mahalle:</span> ${item.mahalle}</p>` : ''}
-                ${item.access ? `<p style="margin: 3px 0;"><span class="label">Erişim:</span> ${item.access}</p>` : ''}
+                ${item.city ? `<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">İl:</span> ${item.city}</p>` : '<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">İl:</span> <span style="color: #95a5a6;">-</span></p>'}
+                ${item.district ? `<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">İlçe:</span> ${item.district}</p>` : '<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">İlçe:</span> <span style="color: #95a5a6;">-</span></p>'}
+                ${item.mahalle ? `<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">Mahalle:</span> ${item.mahalle}</p>` : ''}
+                ${item.type ? `<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">Türler:</span> ${item.type}</p>` : ''}
+                ${item.access ? `<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">Erişim:</span> ${item.access}</p>` : ''}
             </div>
             
             <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
