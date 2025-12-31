@@ -793,7 +793,9 @@ function showInfoPanel(item) {
             </div>
             
             <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
-                <button onclick="markAsNewItem(${item.id})" style="width: 100%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: ${isMobile ? '12px' : '13px'}; margin-bottom: 15px;">
+                <button onclick="markAsNewItem(${item.id})" 
+                        ontouchend="event.preventDefault(); event.stopPropagation(); markAsNewItem(${item.id});"
+                        style="width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: ${isMobile ? '13px' : '13px'}; margin-bottom: 15px; touch-action: manipulation;">
                     ➕ Yeni Öğe Olarak İşaretle
                 </button>
                 <h3 style="margin: 0 0 10px 0; font-size: ${isMobile ? '13px' : '16px'};">Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)</h3>
@@ -916,8 +918,10 @@ function displayQIDList(results) {
                     
                     <!-- Sağ: 30% Buton -->
                     <div style="flex: 0 0 30%; display: flex; align-items: center; justify-content: center;">
-                        <a href="#" onclick="openAddKEModal('${q.qid}', ${activeKEMarker.keItem.id}); return false;" 
-                           style="display: block; padding: 6px 8px; background: #4caf50; color: white; border-radius: 4px; font-size: 10px; text-decoration: none; font-weight: bold; text-align: center; width: 100%;">
+                        <a href="#" 
+                           onclick="openAddKEModal('${q.qid}', ${activeKEMarker.keItem.id}); return false;" 
+                           ontouchend="event.preventDefault(); event.stopPropagation(); openAddKEModal('${q.qid}', ${activeKEMarker.keItem.id});"
+                           style="display: block; padding: 6px 8px; background: #4caf50; color: white; border-radius: 4px; font-size: 10px; text-decoration: none; font-weight: bold; text-align: center; width: 100%; touch-action: manipulation;">
                             + KE ID<br>Ekle
                         </a>
                     </div>
