@@ -808,6 +808,11 @@ function showInfoPanel(item) {
     
     panel.innerHTML = html;
     
+    // Mobilde resize handle ekle
+    if (isMobile) {
+        addMobileResizeHandle();
+    }
+    
     // Header yüksekliğini ölç ve QID container'ın top'unu ayarla
     requestAnimationFrame(() => {
         const header = document.getElementById('panelHeader');
@@ -1241,6 +1246,103 @@ function updateMobileRadius(value) {
 }
 
 // Mobil sidebar resize localStorage
+// Mobilde resize handle ekle
+function addMobileResizeHandle() {
+    const panel = document.getElementById('infoPanel');
+    if (!panel) return;
+    
+    // Mevcut handle'ı kaldır
+    const existingHandle = document.getElementById('mobileResizeHandle');
+    if (existingHandle) {
+        existingHandle.remove();
+    }
+    
+    let startY = 0;
+    let startHeight = 0;
+    let isResizing = false;
+    
+    // Resize handle oluştur
+    const resizeHandle = document.createElement('div');
+    resizeHandle.id = 'mobileResizeHandle';
+    resizeHandle.style.cssText = `
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        cursor: ns-resize;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+    `;
+    
+    // Visual indicator
+    const handleIndicator = document.createElement('div');
+    handleIndicator.style.cssText = `
+        width: 50px;
+        height: 5px;
+        background: #95a5a6;
+        border-radius: 3px;
+        pointer-events: none;
+    `;
+    resizeHandle.appendChild(handleIndicator);
+    
+    // Touch start
+    resizeHandle.addEventListener('touchstart', (e) => {
+        isResizing = true;
+        startY = e.touches[0].clientY;
+        startHeight = panel.offsetHeight;
+        handleIndicator.style.background = '#7f8c8d'; // Darker on touch
+        e.preventDefault();
+        e.stopPropagation();
+    }, { passive: false });
+    
+    // Touch move
+    const handleTouchMove = (e) => {
+        if (!isResizing) return;
+        
+        const currentY = e.touches[0].clientY;
+        const deltaY = currentY - startY;
+        const newHeight = startHeight + deltaY;
+        
+        // Min/max constraints
+        const minHeight = window.innerHeight * 0.2; // 20vh
+        const maxHeight = window.innerHeight * 0.9; // 90vh
+        
+        if (newHeight >= minHeight && newHeight <= maxHeight) {
+            panel.style.height = newHeight + 'px';
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+    };
+    
+    // Touch end
+    const handleTouchEnd = () => {
+        if (isResizing) {
+            isResizing = false;
+            handleIndicator.style.background = '#95a5a6'; // Back to normal
+            const finalHeight = panel.offsetHeight;
+            localStorage.setItem('sidebarHeightMobile', Math.round(finalHeight));
+            
+            // Çemberi yeniden ortala
+            if (activeKEMarker && activeKEMarker.keItem) {
+                updateMobileCirclePosition();
+            }
+        }
+    };
+    
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener('touchcancel', handleTouchEnd);
+    
+    panel.appendChild(resizeHandle);
+}
+
 function setupSidebarResize() {
     const panel = document.getElementById('infoPanel');
     if (!panel) return;
@@ -1253,82 +1355,6 @@ function setupSidebarResize() {
         if (savedMobileHeight) {
             panel.style.height = savedMobileHeight + 'px';
         }
-        
-        // Mobile touch resize
-        let startY = 0;
-        let startHeight = 0;
-        let isResizing = false;
-        
-        // Resize handle'a touch event'leri ekle
-        const resizeHandle = document.createElement('div');
-        resizeHandle.id = 'mobileResizeHandle';
-        resizeHandle.style.cssText = `
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 30px;
-            cursor: ns-resize;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            touch-action: none;
-        `;
-        
-        const handleIndicator = document.createElement('div');
-        handleIndicator.style.cssText = `
-            width: 40px;
-            height: 4px;
-            background: #bdc3c7;
-            border-radius: 2px;
-            pointer-events: none;
-        `;
-        resizeHandle.appendChild(handleIndicator);
-        
-        panel.appendChild(resizeHandle);
-        
-        // Touch start
-        resizeHandle.addEventListener('touchstart', (e) => {
-            isResizing = true;
-            startY = e.touches[0].clientY;
-            startHeight = panel.offsetHeight;
-            e.preventDefault();
-        });
-        
-        // Touch move
-        document.addEventListener('touchmove', (e) => {
-            if (!isResizing) return;
-            
-            const currentY = e.touches[0].clientY;
-            const deltaY = currentY - startY;
-            const newHeight = startHeight + deltaY;
-            
-            // Min/max constraints
-            const minHeight = window.innerHeight * 0.2; // 20vh
-            const maxHeight = window.innerHeight * 0.9; // 90vh
-            
-            if (newHeight >= minHeight && newHeight <= maxHeight) {
-                panel.style.height = newHeight + 'px';
-            }
-            
-            e.preventDefault();
-        });
-        
-        // Touch end
-        document.addEventListener('touchend', () => {
-            if (isResizing) {
-                isResizing = false;
-                const finalHeight = panel.offsetHeight;
-                localStorage.setItem('sidebarHeightMobile', Math.round(finalHeight));
-                
-                // Çemberi yeniden ortala
-                if (activeKEMarker && activeKEMarker.keItem) {
-                    updateMobileCirclePosition();
-                }
-            }
-        });
-        
     } else {
         const savedHeight = localStorage.getItem('sidebarHeight');
         if (savedHeight) {
@@ -1336,31 +1362,19 @@ function setupSidebarResize() {
         }
     }
     
-    // ResizeObserver ile boyut değişimini izle
-    const resizeObserver = new ResizeObserver(entries => {
-        for (let entry of entries) {
-            const height = entry.contentRect.height;
-            
-            if (window.innerWidth <= 768) {
-                // Mobilde
-                if (height >= 100) {
-                    localStorage.setItem('sidebarHeightMobile', Math.round(height));
-                    
-                    // Sidebar resize olunca çemberi tekrar ortala
-                    if (activeKEMarker && activeKEMarker.keItem) {
-                        updateMobileCirclePosition();
-                    }
-                }
-            } else {
-                // Desktop'ta
+    // ResizeObserver ile boyut değişimini izle (desktop için)
+    if (!isMobile) {
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                const height = entry.contentRect.height;
                 if (height >= 300) {
                     localStorage.setItem('sidebarHeight', Math.round(height));
                 }
             }
-        }
-    });
-    
-    resizeObserver.observe(panel);
+        });
+        
+        resizeObserver.observe(panel);
+    }
 }
 
 // Mobilde çemberi sidebar yüksekliğine göre ortala
