@@ -710,8 +710,7 @@ function selectKEMarker(marker, item) {
     const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
-        // Mobilde: Sidebar dinamik yükseklik, harita altta
-        // Çemberi haritanın görünen kısmının ortasına yerleştir
+        // Mobilde: Sidebar üstte, çemberi haritanın alt kısmına yerleştir
         const panel = document.getElementById('infoPanel');
         const panelHeight = panel ? panel.offsetHeight : window.innerHeight * 0.5;
         
@@ -719,8 +718,8 @@ function selectKEMarker(marker, item) {
         const mapHeight = mapContainer.offsetHeight;
         const visibleMapHeight = mapHeight - panelHeight;
         
-        // Görünen harita alanının ortasına kaydır
-        const offsetY = panelHeight + (visibleMapHeight / 2) - (mapHeight / 2);
+        // Çemberi haritanın görünen kısmının 2/3'üne kaydır (daha aşağıda)
+        const offsetY = panelHeight + (visibleMapHeight * 0.66) - (mapHeight / 2);
         
         const point = map.project([item.lat, item.lng], zoomLevel);
         point.y += offsetY;
@@ -893,25 +892,33 @@ function displayQIDList(results) {
         let html = `<div class="qid-list">`;
         
         validQids.forEach(q => {
-            const p31Text = q.p31Label ? ` <span style="color: #7f8c8d; font-size: 12px;">(${q.p31Label})</span>` : '';
+            const p31Text = q.p31Label ? ` <span style="color: #7f8c8d; font-size: 11px;">(${q.p31Label})</span>` : '';
             
             html += `
                 <div class="qid-item" id="qid-item-${q.qid}" 
+                     style="display: flex; gap: 8px; padding: 8px; background: #f8f9fa; border-radius: 5px; margin-bottom: 5px;"
                      onmouseover="highlightQIDMarker('${q.qid}'); this.style.background='#fff3cd';" 
                      onmouseout="unhighlightQIDMarker(); this.style.background='#f8f9fa';">
-                    <div style="font-size: 14px; font-weight: 600;">
-                        <a href="https://www.wikidata.org/wiki/${q.qid}" target="_blank" style="color: #2c3e50; text-decoration: none;">
-                            ${q.label}${p31Text}
-                        </a>
+                    
+                    <!-- Sol: 70% İçerik -->
+                    <div style="flex: 0 0 70%; min-width: 0;">
+                        <div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <a href="https://www.wikidata.org/wiki/${q.qid}" target="_blank" style="color: #2c3e50; text-decoration: none;">
+                                ${q.label}
+                            </a>
+                        </div>
+                        ${p31Text}
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+                            <small style="color: #7f8c8d; font-size: 11px;">Uzaklık: ${q.distance}m</small>
+                            <small style="color: #9b59b6; font-size: 10px; font-weight: 600;">${q.qid}</small>
+                        </div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px;">
-                        <small style="color: #7f8c8d; font-size: 12px;">Uzaklık: ${q.distance}m</small>
-                        <small style="color: #9b59b6; font-size: 11px; font-weight: 600;">${q.qid}</small>
-                    </div>
-                    <div style="margin-top: 5px;">
+                    
+                    <!-- Sağ: 30% Buton -->
+                    <div style="flex: 0 0 30%; display: flex; align-items: center; justify-content: center;">
                         <a href="#" onclick="openAddKEModal('${q.qid}', ${activeKEMarker.keItem.id}); return false;" 
-                           style="display: block; padding: 8px 12px; background: #4caf50; color: white; border-radius: 3px; font-size: 11px; text-decoration: none; font-weight: bold; text-align: center;">
-                            + KE ID Ekle
+                           style="display: block; padding: 6px 8px; background: #4caf50; color: white; border-radius: 4px; font-size: 10px; text-decoration: none; font-weight: bold; text-align: center; width: 100%;">
+                            + KE ID<br>Ekle
                         </a>
                     </div>
                 </div>
