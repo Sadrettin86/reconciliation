@@ -1253,6 +1253,82 @@ function setupSidebarResize() {
         if (savedMobileHeight) {
             panel.style.height = savedMobileHeight + 'px';
         }
+        
+        // Mobile touch resize
+        let startY = 0;
+        let startHeight = 0;
+        let isResizing = false;
+        
+        // Resize handle'a touch event'leri ekle
+        const resizeHandle = document.createElement('div');
+        resizeHandle.id = 'mobileResizeHandle';
+        resizeHandle.style.cssText = `
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            cursor: ns-resize;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        `;
+        
+        const handleIndicator = document.createElement('div');
+        handleIndicator.style.cssText = `
+            width: 40px;
+            height: 4px;
+            background: #bdc3c7;
+            border-radius: 2px;
+            pointer-events: none;
+        `;
+        resizeHandle.appendChild(handleIndicator);
+        
+        panel.appendChild(resizeHandle);
+        
+        // Touch start
+        resizeHandle.addEventListener('touchstart', (e) => {
+            isResizing = true;
+            startY = e.touches[0].clientY;
+            startHeight = panel.offsetHeight;
+            e.preventDefault();
+        });
+        
+        // Touch move
+        document.addEventListener('touchmove', (e) => {
+            if (!isResizing) return;
+            
+            const currentY = e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            const newHeight = startHeight + deltaY;
+            
+            // Min/max constraints
+            const minHeight = window.innerHeight * 0.2; // 20vh
+            const maxHeight = window.innerHeight * 0.9; // 90vh
+            
+            if (newHeight >= minHeight && newHeight <= maxHeight) {
+                panel.style.height = newHeight + 'px';
+            }
+            
+            e.preventDefault();
+        });
+        
+        // Touch end
+        document.addEventListener('touchend', () => {
+            if (isResizing) {
+                isResizing = false;
+                const finalHeight = panel.offsetHeight;
+                localStorage.setItem('sidebarHeightMobile', Math.round(finalHeight));
+                
+                // Çemberi yeniden ortala
+                if (activeKEMarker && activeKEMarker.keItem) {
+                    updateMobileCirclePosition();
+                }
+            }
+        });
+        
     } else {
         const savedHeight = localStorage.getItem('sidebarHeight');
         if (savedHeight) {
