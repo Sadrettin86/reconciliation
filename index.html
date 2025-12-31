@@ -67,25 +67,10 @@
                 max-height: 90vh;
                 min-height: 20vh;
                 border-radius: 0 0 16px 16px;
-                resize: vertical;
+                resize: none;
                 overflow: hidden;
                 z-index: 1001;
                 touch-action: none;
-            }
-            
-            /* Resize handle mobilde daha büyük */
-            .info-panel::after {
-                content: '';
-                position: absolute;
-                bottom: 8px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 60px;
-                height: 6px;
-                background: #95a5a6;
-                border-radius: 3px;
-                pointer-events: none;
-                z-index: 10;
             }
             
             /* Leaflet attribution - mobile'da sağda */
