@@ -793,8 +793,7 @@ function showInfoPanel(item) {
             </div>
             
             <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
-                <button onclick="markAsNewItem(${item.id})" 
-                        ontouchend="event.preventDefault(); event.stopPropagation(); markAsNewItem(${item.id});"
+                <button id="newItemButton" data-ke-id="${item.id}"
                         style="width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: ${isMobile ? '13px' : '13px'}; margin-bottom: 15px; touch-action: manipulation;">
                     ➕ Yeni Öğe Olarak İşaretle
                 </button>
@@ -821,6 +820,26 @@ function showInfoPanel(item) {
         if (header && container) {
             const headerHeight = header.offsetHeight;
             container.style.top = (headerHeight + 15) + 'px';
+        }
+        
+        // Yeni Öğe butonuna event listener ekle
+        const newItemButton = document.getElementById('newItemButton');
+        if (newItemButton) {
+            const keId = parseInt(newItemButton.getAttribute('data-ke-id'));
+            
+            // Touch event (mobil)
+            newItemButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                markAsNewItem(keId);
+            }, { passive: false });
+            
+            // Click event (desktop fallback)
+            newItemButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                markAsNewItem(keId);
+            });
         }
     });
     
