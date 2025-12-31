@@ -63,12 +63,17 @@ function initMap() {
     const isMobile = window.innerWidth <= 768;
     const zoomControlPosition = isMobile ? 'bottomright' : 'topleft';
     
+    // localStorage'dan son harita pozisyonunu yükle
+    const savedLat = parseFloat(localStorage.getItem('mapLat')) || 39.0;
+    const savedLng = parseFloat(localStorage.getItem('mapLng')) || 35.0;
+    const savedZoom = parseInt(localStorage.getItem('mapZoom')) || 6;
+    
     map = L.map('map', {
         zoomControl: false,
         doubleClickZoom: true,  // Çift tıklama zoom
         tap: true,              // Mobil dokunma
         tapTolerance: 15        // Dokunma toleransı
-    }).setView([39.0, 35.0], 6);
+    }).setView([savedLat, savedLng], savedZoom);
     
     // Zoom kontrolü ekle (pozisyon belirterek)
     L.control.zoom({
@@ -85,6 +90,15 @@ function initMap() {
     qidMarkers.addTo(map);
     
     map.on('moveend', onMapMoveEnd);
+    
+    // Harita hareket edince pozisyonu kaydet
+    map.on('moveend', function() {
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        localStorage.setItem('mapLat', center.lat);
+        localStorage.setItem('mapLng', center.lng);
+        localStorage.setItem('mapZoom', zoom);
+    });
     
     // Boş alana tıklayınca sidebar ve yarıçap kapat
     map.on('click', function(e) {
