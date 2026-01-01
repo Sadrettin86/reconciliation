@@ -470,6 +470,11 @@ async function updateUserStats(type) {
 // YAPILANLAR MODAL
 // ============================================
 
+// Giriş yap fonksiyonu
+function handleLogin() {
+    alert('🔐 OAuth Girişi\n\nWikimedia hesabınızla giriş yapma özelliği yakında aktif olacak!\n\nŞu anda:\n• Anonim olarak katkıda bulunabilirsiniz\n• Tüm özellikler kullanılabilir\n• Veriler Firebase\'de saklanıyor\n\nGiriş yapınca:\n• Kullanıcı adınızla katkılarınız görünecek\n• Liderlik tablosunda yeriniz olacak\n• İstatistikleriniz profilde saklanacak');
+}
+
 async function showActivities() {
     const modal = document.getElementById('activitiesModal');
     const body = document.getElementById('activitiesBody');
