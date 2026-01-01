@@ -605,10 +605,11 @@ function loadEncodedData() {
             lng: point.lo,
             country: point.c || '',
             region: point.r || '',
-            city: point.il || point.ci || '',      // il veya ci
-            district: point.ilce || point.d || '', // ilce veya d
-            mahalle: point.m || '',
-            access: point.a || '',
+            // Tüm olası field kombinasyonları
+            city: point.il || point.city || point.sehir || point.ci || point.s || '',
+            district: point.ilce || point.district || point.ilçe || point.d || '',
+            mahalle: point.m || point.mahalle || '',
+            access: point.a || point.erisim || '',
             matched: false,
             newItem: false
         }));
@@ -618,6 +619,19 @@ function loadEncodedData() {
         
         console.log('Sample RAW data:', data[0]);
         console.log('Sample MAPPED data:', keData[0]);
+        console.log('City field test:', {
+            'point.il': data[0].il,
+            'point.city': data[0].city,
+            'point.sehir': data[0].sehir,
+            'point.ci': data[0].ci,
+            'point.s': data[0].s
+        });
+        console.log('District field test:', {
+            'point.ilce': data[0].ilce,
+            'point.district': data[0].district,
+            'point.ilçe': data[0].ilçe,
+            'point.d': data[0].d
+        });
         
     } catch (error) {
         console.error('Error loading encoded data:', error);
@@ -784,7 +798,11 @@ function showInfoPanel(item) {
     
     let html = `
         <div id="panelHeader" style="position: relative; z-index: 1;">
-            <h2 style="cursor: pointer; color: #2c3e50; font-size: ${isMobile ? '16px' : '18px'}; margin: 0 0 10px 0;" onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" title="Kültür Envanteri'nde aç">
+            <h2 style="cursor: pointer; color: #2c3e50; font-size: ${isMobile ? '16px' : '18px'}; margin: 0 0 10px 0; transition: all 0.2s; border-bottom: 2px solid transparent;" 
+                onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" 
+                onmouseover="this.style.color='#3498db'; this.style.borderBottomColor='#3498db';" 
+                onmouseout="this.style.color='#2c3e50'; this.style.borderBottomColor='transparent';"
+                title="Kültür Envanteri'nde açmak için tıklayın 🔗">
                 ${item.name || 'İsimsiz'}
             </h2>
             <div style="${gridStyle}">
@@ -920,21 +938,31 @@ function displayQIDList(results) {
             
             html += `
                 <div class="qid-item" id="qid-item-${q.qid}" 
-                     style="display: flex; gap: 8px; padding: 8px; background: #f8f9fa; border-radius: 5px; margin-bottom: 5px;"
-                     onmouseover="highlightQIDMarker('${q.qid}'); this.style.background='#fff3cd';" 
-                     onmouseout="unhighlightQIDMarker(); this.style.background='#f8f9fa';">
+                     style="display: flex; gap: 8px; padding: 8px; background: #f8f9fa; border-radius: 5px; margin-bottom: 5px; transition: all 0.2s; border: 1px solid transparent;"
+                     onmouseover="highlightQIDMarker('${q.qid}'); this.style.background='#fff3cd'; this.style.borderColor='#ffc107';" 
+                     onmouseout="unhighlightQIDMarker(); this.style.background='#f8f9fa'; this.style.borderColor='transparent';">
                     
                     <!-- Sol: 70% İçerik -->
                     <div style="flex: 0 0 70%; min-width: 0;">
                         <div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            <a href="https://www.wikidata.org/wiki/${q.qid}" target="_blank" style="color: #2c3e50; text-decoration: none;">
+                            <a href="https://www.wikidata.org/wiki/${q.qid}" 
+                               target="_blank" 
+                               style="color: #2c3e50; text-decoration: none; transition: all 0.2s; border-bottom: 1px solid transparent;"
+                               onmouseover="this.style.color='#3498db'; this.style.borderBottomColor='#3498db';"
+                               onmouseout="this.style.color='#2c3e50'; this.style.borderBottomColor='transparent';"
+                               title="Wikidata'da açmak için tıklayın 🔗">
                                 ${q.label}
                             </a>
                         </div>
                         ${p31Text}
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
                             <small style="color: #7f8c8d; font-size: 11px;">Uzaklık: ${q.distance}m</small>
-                            <small style="color: #9b59b6; font-size: 10px; font-weight: 600;">${q.qid}</small>
+                            <a href="https://www.wikidata.org/wiki/${q.qid}" 
+                               target="_blank"
+                               style="color: #9b59b6; font-size: 10px; font-weight: 600; text-decoration: none; transition: color 0.2s;"
+                               onmouseover="this.style.color='#8e44ad';"
+                               onmouseout="this.style.color='#9b59b6';"
+                               title="Wikidata'da açmak için tıklayın">${q.qid}</a>
                         </div>
                     </div>
                     
@@ -943,7 +971,9 @@ function displayQIDList(results) {
                         <a href="#" 
                            onclick="openAddKEModal('${q.qid}', ${activeKEMarker.keItem.id}); return false;" 
                            ontouchend="event.preventDefault(); event.stopPropagation(); openAddKEModal('${q.qid}', ${activeKEMarker.keItem.id});"
-                           style="display: block; padding: 6px 8px; background: #4caf50; color: white; border-radius: 4px; font-size: 10px; text-decoration: none; font-weight: bold; text-align: center; width: 100%; touch-action: manipulation;">
+                           style="display: block; padding: 6px 8px; background: #4caf50; color: white; border-radius: 4px; font-size: 10px; text-decoration: none; font-weight: bold; text-align: center; width: 100%; touch-action: manipulation; transition: background 0.2s;"
+                           onmouseover="this.style.background='#45a049';"
+                           onmouseout="this.style.background='#4caf50';">
                             + KE ID<br>Ekle
                         </a>
                     </div>
