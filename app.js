@@ -508,7 +508,7 @@ async function fetchWikidataAutocomplete(query) {
             `search=${encodeURIComponent(query)}&` +
             `language=tr&` +
             `uselang=tr&` +
-            `limit=10&` +
+            `limit=50&` +
             `format=json&` +
             `origin=*`;
         
@@ -673,7 +673,7 @@ async function performWikidataSearch() {
             `search=${encodeURIComponent(query)}&` +
             `language=tr&` +
             `uselang=tr&` +
-            `limit=20&` +
+            `limit=50&` +
             `format=json&` +
             `origin=*`;
         
@@ -928,8 +928,8 @@ function showCoordinatePanel(lat, lng) {
     
     let html = `
         <div id="panelHeader" style="position: relative; z-index: 1;">
-            <h2 style="color: #2c3e50; font-size: ${isMobile ? '14px' : '16px'}; margin: 0 0 10px 0; font-family: monospace;">
-                📍 Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}
+            <h2 style="color: #2c3e50; font-size: ${isMobile ? '12px' : '13px'}; margin: 0 0 10px 0; font-family: monospace;">
+                Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}
             </h2>
             
             <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
@@ -982,7 +982,7 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
               }
               OPTIONAL { ?place wdt:P11729 ?keID. }
               SERVICE wikibase:label { bd:serviceParam wikibase:language "tr,en". }
-            } LIMIT 100
+            }
         `;
         
         const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
