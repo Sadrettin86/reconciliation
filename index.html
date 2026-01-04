@@ -558,6 +558,27 @@
         <div id="status" class="status" style="display: none;"></div>
     </div>
     
+    <!-- Wikidata Arama Kutusu -->
+    <div style="position: absolute; top: 10px; right: 10px; z-index: 1000; width: 300px;">
+        <div style="position: relative;">
+            <input type="text" 
+                   id="wikidataSearch" 
+                   placeholder="Wikidata'da isim ara" 
+                   autocomplete="off"
+                   style="width: 100%; padding: 8px 35px 8px 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 13px; transition: border-color 0.2s; box-sizing: border-box; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
+                   onfocus="this.style.borderColor='#3498db'"
+                   onblur="setTimeout(() => this.style.borderColor='#ddd', 200)"
+                   oninput="handleWikidataSearchInput()"
+                   onkeypress="if(event.key==='Enter') performWikidataSearch()" />
+            <span onclick="performWikidataSearch()" 
+                  style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 16px; color: #95a5a6; user-select: none;"
+                  title="Ara">🔍</span>
+        </div>
+        <!-- Auto-complete dropdown -->
+        <div id="wikidataAutocomplete" 
+             style="display: none; position: absolute; top: 45px; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 300px; overflow-y: auto; z-index: 10001;"></div>
+    </div>
+    
     <!-- İstatistik Paneli -->
     <div class="stats-panel">
         <div class="stat-item">
