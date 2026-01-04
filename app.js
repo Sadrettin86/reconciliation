@@ -747,13 +747,13 @@ async function showWikidataSearchResults(query, results) {
             </button>
         ` : '';
         
-        // P11729 (KE ID) linki
-        const keLink = item.p11729 ? `
+        // P11729 (KE ID) badge - QID'den sonra
+        const keBadge = item.p11729 ? `
             <a href="https://kulturenvanteri.com/yer/?p=${item.p11729}" 
                target="_blank"
-               style="color: #8b4513; font-size: 11px; font-weight: 600; text-decoration: none; margin-right: 6px; transition: color 0.2s;"
-               onmouseover="this.style.color='#654321';"
-               onmouseout="this.style.color='#8b4513';"
+               style="background: #8b4513; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 600; text-decoration: none; margin-left: 6px; transition: background 0.2s; display: inline-block;"
+               onmouseover="this.style.background='#654321';"
+               onmouseout="this.style.background='#8b4513';"
                title="Kültür Envanteri'nde aç">${item.p11729}</a>
         ` : '';
         
@@ -762,7 +762,6 @@ async function showWikidataSearchResults(query, results) {
                 <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
                     <div style="flex: 1;">
                         <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px;">
-                            ${keLink}
                             <a href="https://www.wikidata.org/wiki/${item.qid}" 
                                target="_blank"
                                style="color: #2c3e50; text-decoration: none; border-bottom: 1px solid transparent; transition: all 0.2s;"
@@ -771,10 +770,13 @@ async function showWikidataSearchResults(query, results) {
                                 ${item.label}
                             </a>
                             <span style="color: #9b59b6; font-size: 11px; margin-left: 6px;">(${item.qid})</span>
+                            ${keBadge}
                         </div>
-                        ${item.p131 ? `<div style="font-size: 12px; color: #7f8c8d; margin-top: 3px;"><strong>P131:</strong> ${item.p131}</div>` : ''}
-                        ${item.p17 ? `<div style="font-size: 12px; color: #7f8c8d; margin-top: 3px;"><strong>P17:</strong> ${item.p17}</div>` : ''}
-                        ${!item.p131 && !item.p17 ? `<div style="font-size: 11px; color: #95a5a6; margin-top: 3px; font-style: italic;">Konum bilgisi yok</div>` : ''}
+                        <div style="display: flex; gap: 15px; font-size: 12px; color: #7f8c8d; margin-top: 3px;">
+                            ${item.p131 ? `<span><strong>İdari birim:</strong> ${item.p131}</span>` : ''}
+                            ${item.p17 ? `<span><strong>Ülke:</strong> ${item.p17}</span>` : ''}
+                            ${!item.p131 && !item.p17 ? `<span style="font-size: 11px; color: #95a5a6; font-style: italic;">Konum bilgisi yok</span>` : ''}
+                        </div>
                     </div>
                     <div>
                         ${gotoButton}
@@ -1062,13 +1064,13 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
             validQids.forEach(q => {
                 const p31Text = q.p31Label ? ` <span style="color: #7f8c8d; font-size: 11px;">(${q.p31Label})</span>` : '';
                 
-                // P11729 (KE ID) linki
-                const keLink = q.keID ? `
+                // P11729 (KE ID) badge - QID'den sonra
+                const keBadge = q.keID ? `
                     <a href="https://kulturenvanteri.com/yer/?p=${q.keID}" 
                        target="_blank"
-                       style="color: #8b4513; font-size: 11px; font-weight: 600; text-decoration: none; margin-left: 6px; transition: color 0.2s;"
-                       onmouseover="this.style.color='#654321';"
-                       onmouseout="this.style.color='#8b4513';"
+                       style="background: #8b4513; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 600; text-decoration: none; margin-left: 6px; transition: background 0.2s; display: inline-block;"
+                       onmouseover="this.style.background='#654321';"
+                       onmouseout="this.style.background='#8b4513';"
                        title="Kültür Envanteri'nde aç">${q.keID}</a>
                 ` : '';
                 
@@ -1080,7 +1082,6 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
                          onmouseout="unhighlightQIDMarker(); this.style.background='#f8f9fa'; this.style.borderColor='transparent';">
                         
                         <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
-                            ${keLink}
                             <a href="https://www.wikidata.org/wiki/${q.qid}" 
                                target="_blank" 
                                style="color: #2c3e50; text-decoration: none; transition: all 0.2s; border-bottom: 1px solid transparent;"
@@ -1094,12 +1095,15 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
                         
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <small style="color: #7f8c8d; font-size: 12px;">Uzaklık: ${q.distance}m</small>
-                            <a href="https://www.wikidata.org/wiki/${q.qid}" 
-                               target="_blank"
-                               style="color: #9b59b6; font-size: 11px; font-weight: 600; text-decoration: none; transition: color 0.2s;"
-                               onmouseover="this.style.color='#8e44ad';"
-                               onmouseout="this.style.color='#9b59b6';"
-                               title="Wikidata'da açmak için tıklayın">${q.qid}</a>
+                            <div>
+                                <a href="https://www.wikidata.org/wiki/${q.qid}" 
+                                   target="_blank"
+                                   style="color: #9b59b6; font-size: 11px; font-weight: 600; text-decoration: none; transition: color 0.2s;"
+                                   onmouseover="this.style.color='#8e44ad';"
+                                   onmouseout="this.style.color='#9b59b6';"
+                                   title="Wikidata'da açmak için tıklayın">${q.qid}</a>
+                                ${keBadge}
+                            </div>
                         </div>
                     </div>
                 `;
