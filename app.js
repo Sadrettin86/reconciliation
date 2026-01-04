@@ -12,6 +12,7 @@ let qidMarkers = L.layerGroup();
 let keData = [];
 let loadedQidClusters = new Set();
 let activeKEMarker = null;
+let activeCoordinate = null; // Koordinat aramada kullanılır: {lat, lng}
 let searchCircle = null;
 let currentSearchRadius = 100; // Varsayılan 100 metre (localStorage'dan yüklenecek)
 let currentUser = null;
@@ -100,8 +101,16 @@ function initMap() {
         localStorage.setItem('mapZoom', zoom);
     });
     
+    // Sağ tıklama menüsü
+    map.on('contextmenu', function(e) {
+        showContextMenu(e.latlng.lat, e.latlng.lng, e.containerPoint);
+    });
+    
     // Boş alana tıklayınca sidebar ve yarıçap kapat
     map.on('click', function(e) {
+        // Context menüyü kapat
+        hideContextMenu();
+        
         // Eğer marker'a tıklanmadıysa (event propagation durdurulamadıysa)
         setTimeout(() => {
             if (!e.originalEvent._markerClicked) {
@@ -475,6 +484,61 @@ function handleLogin() {
     alert('🔐 OAuth Girişi\n\nWikimedia hesabınızla giriş yapma özelliği yakında aktif olacak!\n\nŞu anda:\n• Anonim olarak katkıda bulunabilirsiniz\n• Tüm özellikler kullanılabilir\n• Veriler Firebase\'de saklanıyor\n\nGiriş yapınca:\n• Kullanıcı adınızla katkılarınız görünecek\n• Liderlik tablosunda yeriniz olacak\n• İstatistikleriniz profilde saklanacak');
 }
 
+// Sağ tıklama context menu göster
+function showContextMenu(lat, lng, point) {
+    // Mevcut menüyü kaldır
+    hideContextMenu();
+    
+    // Context menu oluştur
+    const menu = document.createElement('div');
+    menu.id = 'contextMenu';
+    menu.style.cssText = `
+        position: absolute;
+        left: ${point.x}px;
+        top: ${point.y}px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        min-width: 180px;
+        overflow: hidden;
+    `;
+    
+    menu.innerHTML = `
+        <div style="padding: 8px 12px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 8px;"
+             onmouseover="this.style.background='#f8f9fa'"
+             onmouseout="this.style.background='white'"
+             onclick="searchFromContextMenu(${lat}, ${lng})">
+            <span style="font-size: 16px;">🔍</span>
+            <span style="font-size: 13px; font-weight: 500;">Wikidata QID ara</span>
+        </div>
+        <div style="padding: 6px 12px; font-size: 11px; color: #7f8c8d; border-top: 1px solid #ecf0f1;">
+            ${lat.toFixed(6)}, ${lng.toFixed(6)}
+        </div>
+    `;
+    
+    document.body.appendChild(menu);
+    
+    // Koordinatları global değişkende sakla
+    window.contextMenuCoords = { lat, lng };
+}
+
+// Context menu'yü gizle
+function hideContextMenu() {
+    const menu = document.getElementById('contextMenu');
+    if (menu) {
+        menu.remove();
+    }
+    window.contextMenuCoords = null;
+}
+
+// Context menu'den koordinat arama
+function searchFromContextMenu(lat, lng) {
+    hideContextMenu();
+    showCoordinateSearch(lat, lng);
+}
+
 // Koordinat arama fonksiyonu
 function searchCoordinates() {
     const input = document.getElementById('coordSearch').value.trim();
@@ -506,6 +570,10 @@ function searchCoordinates() {
 
 // Koordinat arama sonuçlarını göster
 function showCoordinateSearch(lat, lng) {
+    // Aktif koordinatı kaydet
+    activeCoordinate = { lat, lng };
+    activeKEMarker = null; // KE marker modundan çık
+    
     // Arama çemberini göster
     showSearchCircle(lat, lng, currentSearchRadius);
     
@@ -641,7 +709,7 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
                     console.log('P31 yüklenemedi:', qid);
                 }
                 
-                return { qid, label, distance, p31Label };
+                return { qid, label, distance, p31Label, lat: qidLat, lng: qidLng };
             }
             return null;
         });
@@ -652,6 +720,27 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
             // Mesafeye göre sırala
             validQids.sort((a, b) => a.distance - b.distance);
             
+            // QID marker'larını temizle ve yeniden ekle
+            qidMarkers.clearLayers();
+            
+            validQids.forEach(q => {
+                // Haritaya sarı marker ekle
+                const marker = L.circleMarker([q.lat, q.lng], {
+                    radius: 8,
+                    fillColor: '#f1c40f',
+                    color: '#f39c12',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+                
+                marker.qid = q.qid;
+                marker.bindTooltip(q.label, { permanent: false, direction: 'top' });
+                marker.addTo(qidMarkers);
+            });
+            
+            console.log(`Displayed ${validQids.length} QID markers`);
+            
             let html = `<div class="qid-list">`;
             
             validQids.forEach(q => {
@@ -661,8 +750,8 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
                 html += `
                     <div class="qid-item" id="qid-item-${q.qid}" 
                          style="padding: 10px; background: #f8f9fa; border-radius: 5px; margin-bottom: 8px; transition: all 0.2s; border: 1px solid transparent;"
-                         onmouseover="this.style.background='#fff3cd'; this.style.borderColor='#ffc107';" 
-                         onmouseout="this.style.background='#f8f9fa'; this.style.borderColor='transparent';">
+                         onmouseover="highlightQIDMarker('${q.qid}'); this.style.background='#fff3cd'; this.style.borderColor='#ffc107';" 
+                         onmouseout="unhighlightQIDMarker(); this.style.background='#f8f9fa'; this.style.borderColor='transparent';">
                         
                         <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
                             <a href="https://www.wikidata.org/wiki/${q.qid}" 
@@ -1451,6 +1540,7 @@ function setupRadiusSlider() {
         // localStorage'a kaydet
         localStorage.setItem('searchRadius', meterValue);
         
+        // KE marker aktifse
         if (activeKEMarker && activeKEMarker.keItem) {
             const item = activeKEMarker.keItem;
             showSearchCircle(item.lat, item.lng, currentSearchRadius);
@@ -1465,6 +1555,20 @@ function setupRadiusSlider() {
             
             map.setView([item.lat, item.lng], zoomLevel, { animate: true, duration: 0.5 });
             loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
+        }
+        // Koordinat arama aktifse
+        else if (activeCoordinate) {
+            showSearchCircle(activeCoordinate.lat, activeCoordinate.lng, currentSearchRadius);
+            loadNearbyQIDsForCoordinate(activeCoordinate.lat, activeCoordinate.lng);
+            
+            // Sidebar başlığını güncelle (yarıçap bilgisi)
+            const panelHeader = document.getElementById('panelHeader');
+            if (panelHeader) {
+                const h3 = panelHeader.querySelector('h3');
+                if (h3) {
+                    h3.textContent = `Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)`;
+                }
+            }
         }
     });
 }
