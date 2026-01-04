@@ -707,15 +707,15 @@ async function showWikidataSearchResults(query, results) {
     
     let html = `
         <div id="panelHeader" style="position: relative; z-index: 1;">
-            <h2 style="color: #2c3e50; font-size: ${isMobile ? '14px' : '16px'}; margin: 0 0 10px 0;">
-                🔍 Arama: "${query}"
+            <h2 style="color: #2c3e50; font-size: ${isMobile ? '13px' : '14px'}; margin: 0 0 6px 0; line-height: 1.3;">
+                Arama: "${query}"
             </h2>
-            <h3 style="margin: 10px 0; font-size: ${isMobile ? '13px' : '14px'}; padding-top: 10px; border-top: 2px solid #ecf0f1;">
-                Arama Sonuçları (${results.length})
+            <h3 style="margin: 0 0 8px 0; font-size: ${isMobile ? '12px' : '13px'}; padding-top: 6px; border-top: 1px solid #ecf0f1; color: #555;">
+                Sonuçlar (${results.length})
             </h3>
         </div>
         
-        <div id="qidListContainer" style="position: absolute; left: 15px; right: 15px; top: 80px; bottom: 15px; overflow-y: auto;"></div>
+        <div id="qidListContainer" style="position: absolute; left: 15px; right: 15px; top: 50px; bottom: 15px; overflow-y: auto;"></div>
     `;
     
     panel.innerHTML = html;
@@ -911,7 +911,7 @@ function showCoordinatePanel(lat, lng) {
     panel.style.display = 'block';
     
     const isMobile = window.innerWidth <= 768;
-    const qidBottom = isMobile ? '15px' : '50px';
+    const qidBottom = isMobile ? '15px' : '60px';
     
     // Google Maps footer (mobilde gizli)
     const googleMapsFooter = isMobile ? '' : `
@@ -928,13 +928,11 @@ function showCoordinatePanel(lat, lng) {
     
     let html = `
         <div id="panelHeader" style="position: relative; z-index: 1;">
-            <h2 style="color: #2c3e50; font-size: ${isMobile ? '12px' : '13px'}; margin: 0 0 10px 0; font-family: monospace;">
+            <h2 style="color: #2c3e50; font-size: ${isMobile ? '11px' : '12px'}; margin: 0 0 6px 0; font-family: monospace; line-height: 1.3;">
                 Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}
             </h2>
             
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
-                <h3 style="margin: 0 0 10px 0; font-size: ${isMobile ? '13px' : '16px'};">Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)</h3>
-            </div>
+            <h3 style="margin: 0 0 8px 0; padding-top: 6px; border-top: 1px solid #ecf0f1; font-size: ${isMobile ? '12px' : '13px'}; color: #555;">Yakındaki Wikidata (${currentSearchRadius} m)</h3>
         </div>
         
         <div id="qidListContainer" style="position: absolute; left: 15px; right: 15px; bottom: ${qidBottom}; overflow-y: auto;"></div>
@@ -1442,33 +1440,33 @@ function showInfoPanel(item) {
         </div>
     `;
     
-    // QID container bottom (mobilde 15px, desktop'ta 50px)
-    const qidBottom = isMobile ? '15px' : '50px';
+    // QID container bottom (mobilde 15px, desktop'ta 60px - footer yüksekliği)
+    const qidBottom = isMobile ? '15px' : '60px';
+    
+    // Kompakt bilgi satırı - sadece önemli olanlar
+    const infoLine = [
+        item.mahalle ? `Mahalle: ${item.mahalle}` : null,
+        item.type ? `Türler: ${item.type}` : null,
+        item.access ? `Erişim: ${item.access}` : null
+    ].filter(Boolean).join(' • ');
     
     let html = `
         <div id="panelHeader" style="position: relative; z-index: 1;">
-            <h2 style="cursor: pointer; color: #2c3e50; font-size: ${isMobile ? '16px' : '18px'}; margin: 0 0 10px 0; transition: all 0.2s; border-bottom: 2px solid transparent;" 
+            <h2 style="cursor: pointer; color: #2c3e50; font-size: ${isMobile ? '14px' : '15px'}; margin: 0 0 6px 0; transition: all 0.2s; border-bottom: 2px solid transparent; line-height: 1.3;" 
                 onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" 
                 onmouseover="this.style.color='#3498db'; this.style.borderBottomColor='#3498db';" 
                 onmouseout="this.style.color='#2c3e50'; this.style.borderBottomColor='transparent';"
                 title="Kültür Envanteri'nde açmak için tıklayın 🔗">
                 ${item.name || 'İsimsiz'}
             </h2>
-            <div style="${gridStyle}">
-                ${item.city ? `<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">İl:</span> ${item.city}</p>` : '<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">İl:</span> <span style="color: #95a5a6;">-</span></p>'}
-                ${item.district ? `<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">İlçe:</span> ${item.district}</p>` : '<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">İlçe:</span> <span style="color: #95a5a6;">-</span></p>'}
-                ${item.mahalle ? `<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">Mahalle:</span> ${item.mahalle}</p>` : ''}
-                ${item.type ? `<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">Türler:</span> ${item.type}</p>` : ''}
-                ${item.access ? `<p style="margin: 3px 0;"><span class="label" style="font-weight: 600; color: #7f8c8d;">Erişim:</span> ${item.access}</p>` : ''}
-            </div>
+            ${infoLine ? `<p style="margin: 0 0 8px 0; font-size: 11px; color: #7f8c8d;">${infoLine}</p>` : ''}
             
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
-                <button id="newItemButton" data-ke-id="${item.id}"
-                        style="width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: ${isMobile ? '13px' : '13px'}; margin-bottom: 15px; touch-action: manipulation;">
-                    ➕ Yeni Öğe Olarak İşaretle
-                </button>
-                <h3 style="margin: 0 0 10px 0; font-size: ${isMobile ? '13px' : '16px'};">Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)</h3>
-            </div>
+            <button id="newItemButton" data-ke-id="${item.id}"
+                    style="width: 100%; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; margin-bottom: 8px; touch-action: manipulation;">
+                ➕ Yeni Öğe Olarak İşaretle
+            </button>
+            
+            <h3 style="margin: 0 0 8px 0; padding-top: 8px; border-top: 1px solid #ecf0f1; font-size: ${isMobile ? '12px' : '13px'}; color: #555;">Yakındaki Wikidata (${currentSearchRadius} m)</h3>
         </div>
         
         <div id="qidListContainer" style="position: absolute; left: 15px; right: 15px; bottom: ${qidBottom}; overflow-y: auto;"></div>
