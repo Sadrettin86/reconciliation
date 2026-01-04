@@ -61,7 +61,7 @@ function getCurrentUser() {
 function initMap() {
     // Mobilde zoom kontrolleri sağ altta
     const isMobile = window.innerWidth <= 768;
-    const zoomControlPosition = isMobile ? 'bottomright' : 'topleft';
+    const zoomControlPosition = 'bottomright'; // Her zaman sağ alt köşe
     
     // localStorage'dan son harita pozisyonunu yükle
     const savedLat = parseFloat(localStorage.getItem('mapLat')) || 39.0;
@@ -473,6 +473,230 @@ async function updateUserStats(type) {
 // Giriş yap fonksiyonu
 function handleLogin() {
     alert('🔐 OAuth Girişi\n\nWikimedia hesabınızla giriş yapma özelliği yakında aktif olacak!\n\nŞu anda:\n• Anonim olarak katkıda bulunabilirsiniz\n• Tüm özellikler kullanılabilir\n• Veriler Firebase\'de saklanıyor\n\nGiriş yapınca:\n• Kullanıcı adınızla katkılarınız görünecek\n• Liderlik tablosunda yeriniz olacak\n• İstatistikleriniz profilde saklanacak');
+}
+
+// Koordinat arama fonksiyonu
+function searchCoordinates() {
+    const input = document.getElementById('coordSearch').value.trim();
+    
+    if (!input) {
+        alert('❌ Lütfen koordinat girin!\n\nÖrnek: 41.0082, 28.9784');
+        return;
+    }
+    
+    // Koordinat parse (virgül, boşluk veya slash ayırıcı)
+    const coords = input.split(/[,\s/]+/).map(s => parseFloat(s.trim()));
+    
+    if (coords.length !== 2 || isNaN(coords[0]) || isNaN(coords[1])) {
+        alert('❌ Geçersiz koordinat formatı!\n\nDoğru format:\n• 41.0082, 28.9784\n• 41.0082 28.9784\n• 41.0082/28.9784');
+        return;
+    }
+    
+    const [lat, lng] = coords;
+    
+    // Koordinat geçerli mi kontrol et
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        alert('❌ Koordinatlar geçersiz!\n\nLatitude: -90 ile 90 arası\nLongitude: -180 ile 180 arası');
+        return;
+    }
+    
+    // Haritada göster
+    showCoordinateSearch(lat, lng);
+}
+
+// Koordinat arama sonuçlarını göster
+function showCoordinateSearch(lat, lng) {
+    // Arama çemberini göster
+    showSearchCircle(lat, lng, currentSearchRadius);
+    
+    // Haritaya git
+    map.setView([lat, lng], 16, { animate: true, duration: 0.5 });
+    
+    // Sidebar'ı koordinat modunda aç
+    showCoordinatePanel(lat, lng);
+    
+    // Yakındaki QID'leri yükle
+    loadNearbyQIDsForCoordinate(lat, lng);
+}
+
+// Koordinat için sidebar göster (KE bilgileri olmadan)
+function showCoordinatePanel(lat, lng) {
+    const panel = document.getElementById('infoPanel');
+    if (!panel) return;
+    
+    panel.style.display = 'block';
+    
+    const isMobile = window.innerWidth <= 768;
+    const qidBottom = isMobile ? '15px' : '50px';
+    
+    // Google Maps footer (mobilde gizli)
+    const googleMapsFooter = isMobile ? '' : `
+        <div style="position: absolute; left: 15px; right: 15px; bottom: 15px; height: 35px; display: flex; align-items: center; justify-content: center; border-top: 1px solid #ecf0f1; padding-top: 8px;">
+            <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" style="display: flex; align-items: center; gap: 6px; color: #4285f4; text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background='transparent'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                Google Maps'te Aç
+            </a>
+        </div>
+    `;
+    
+    let html = `
+        <div id="panelHeader" style="position: relative; z-index: 1;">
+            <h2 style="color: #2c3e50; font-size: ${isMobile ? '14px' : '16px'}; margin: 0 0 10px 0; font-family: monospace;">
+                📍 Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}
+            </h2>
+            
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
+                <h3 style="margin: 0 0 10px 0; font-size: ${isMobile ? '13px' : '16px'};">Yakındaki Wikidata Öğeleri (${currentSearchRadius} m)</h3>
+            </div>
+        </div>
+        
+        <div id="qidListContainer" style="position: absolute; left: 15px; right: 15px; bottom: ${qidBottom}; overflow-y: auto;"></div>
+        
+        ${googleMapsFooter}
+    `;
+    
+    panel.innerHTML = html;
+    
+    // Mobilde resize handle ekle
+    if (isMobile) {
+        addMobileResizeHandle();
+    }
+    
+    // Header yüksekliğini ölç
+    requestAnimationFrame(() => {
+        const header = document.getElementById('panelHeader');
+        const container = document.getElementById('qidListContainer');
+        if (header && container) {
+            const headerHeight = header.offsetHeight;
+            container.style.top = (headerHeight + 15) + 'px';
+        }
+    });
+    
+    // Mobilde slider'ı göster
+    if (isMobile) {
+        showMobileSlider();
+    }
+}
+
+// Koordinat için yakındaki QID'leri yükle (KE ID Ekle butonu olmadan)
+async function loadNearbyQIDsForCoordinate(lat, lng) {
+    const container = document.getElementById('qidListContainer');
+    if (!container) return;
+    
+    container.innerHTML = '<p style="color: #7f8c8d; text-align: center; padding: 20px;">Yükleniyor...</p>';
+    
+    try {
+        const sparqlQuery = `
+            SELECT ?place ?placeLabel ?location WHERE {
+              SERVICE wikibase:around {
+                ?place wdt:P625 ?location.
+                bd:serviceParam wikibase:center "Point(${lng} ${lat})"^^geo:wktLiteral.
+                bd:serviceParam wikibase:radius "${currentSearchRadius / 1000}".
+              }
+              SERVICE wikibase:label { bd:serviceParam wikibase:language "tr,en". }
+            } LIMIT 100
+        `;
+        
+        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        const bindings = data.results.bindings;
+        
+        if (bindings.length === 0) {
+            container.innerHTML = '<p style="color: #7f8c8d; text-align: center; padding: 20px;">Bu yarıçapta Wikidata öğesi bulunamadı.</p>';
+            return;
+        }
+        
+        // QID'leri işle
+        const qidPromises = bindings.map(async (binding) => {
+            const qid = binding.place.value.split('/').pop();
+            const label = binding.placeLabel.value;
+            const coords = binding.location.value.match(/Point\(([^ ]+) ([^ ]+)\)/);
+            
+            if (coords) {
+                const qidLng = parseFloat(coords[1]);
+                const qidLat = parseFloat(coords[2]);
+                const distance = Math.round(calculateDistance(lat, lng, qidLat, qidLng) * 1000);
+                
+                // P31 (instance of) al
+                let p31Label = '';
+                try {
+                    const p31Query = `
+                        SELECT ?typeLabel WHERE {
+                          wd:${qid} wdt:P31 ?type .
+                          SERVICE wikibase:label { bd:serviceParam wikibase:language "tr,en". }
+                        } LIMIT 1
+                    `;
+                    const p31Url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(p31Query)}&format=json`;
+                    const p31Response = await fetch(p31Url);
+                    const p31Data = await p31Response.json();
+                    if (p31Data.results.bindings.length > 0) {
+                        p31Label = p31Data.results.bindings[0].typeLabel.value;
+                    }
+                } catch (e) {
+                    console.log('P31 yüklenemedi:', qid);
+                }
+                
+                return { qid, label, distance, p31Label };
+            }
+            return null;
+        });
+        
+        Promise.all(qidPromises).then(qidList => {
+            const validQids = qidList.filter(q => q !== null);
+            
+            // Mesafeye göre sırala
+            validQids.sort((a, b) => a.distance - b.distance);
+            
+            let html = `<div class="qid-list">`;
+            
+            validQids.forEach(q => {
+                const p31Text = q.p31Label ? ` <span style="color: #7f8c8d; font-size: 11px;">(${q.p31Label})</span>` : '';
+                
+                // KE ID Ekle butonu YOK!
+                html += `
+                    <div class="qid-item" id="qid-item-${q.qid}" 
+                         style="padding: 10px; background: #f8f9fa; border-radius: 5px; margin-bottom: 8px; transition: all 0.2s; border: 1px solid transparent;"
+                         onmouseover="this.style.background='#fff3cd'; this.style.borderColor='#ffc107';" 
+                         onmouseout="this.style.background='#f8f9fa'; this.style.borderColor='transparent';">
+                        
+                        <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
+                            <a href="https://www.wikidata.org/wiki/${q.qid}" 
+                               target="_blank" 
+                               style="color: #2c3e50; text-decoration: none; transition: all 0.2s; border-bottom: 1px solid transparent;"
+                               onmouseover="this.style.color='#3498db'; this.style.borderBottomColor='#3498db';"
+                               onmouseout="this.style.color='#2c3e50'; this.style.borderBottomColor='transparent';"
+                               title="Wikidata'da açmak için tıklayın 🔗">
+                                ${q.label}
+                            </a>
+                            ${p31Text}
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <small style="color: #7f8c8d; font-size: 12px;">Uzaklık: ${q.distance}m</small>
+                            <a href="https://www.wikidata.org/wiki/${q.qid}" 
+                               target="_blank"
+                               style="color: #9b59b6; font-size: 11px; font-weight: 600; text-decoration: none; transition: color 0.2s;"
+                               onmouseover="this.style.color='#8e44ad';"
+                               onmouseout="this.style.color='#9b59b6';"
+                               title="Wikidata'da açmak için tıklayın">${q.qid}</a>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        });
+        
+    } catch (error) {
+        console.error('QID yükleme hatası:', error);
+        container.innerHTML = '<p style="color: #e74c3c; text-align: center; padding: 20px;">Hata oluştu. Lütfen tekrar deneyin.</p>';
+    }
 }
 
 async function showActivities() {
