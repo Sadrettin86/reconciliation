@@ -479,6 +479,299 @@ async function updateUserStats(type) {
 // YAPILANLAR MODAL
 // ============================================
 
+// Wikidata arama - debounce timer
+let wikidataSearchTimeout = null;
+
+// Wikidata arama input handler
+function handleWikidataSearchInput() {
+    const input = document.getElementById('wikidataSearch');
+    const query = input.value.trim();
+    
+    // Dropdown'u temizle
+    if (query.length < 2) {
+        hideWikidataAutocomplete();
+        return;
+    }
+    
+    // Debounce (300ms)
+    clearTimeout(wikidataSearchTimeout);
+    wikidataSearchTimeout = setTimeout(() => {
+        fetchWikidataAutocomplete(query);
+    }, 300);
+}
+
+// Wikidata autocomplete API
+async function fetchWikidataAutocomplete(query) {
+    try {
+        const url = `https://www.wikidata.org/w/api.php?` +
+            `action=wbsearchentities&` +
+            `search=${encodeURIComponent(query)}&` +
+            `language=tr&` +
+            `limit=10&` +
+            `format=json&` +
+            `origin=*`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.search && data.search.length > 0) {
+            showWikidataAutocomplete(data.search);
+        } else {
+            hideWikidataAutocomplete();
+        }
+    } catch (error) {
+        console.error('Wikidata autocomplete hatası:', error);
+        hideWikidataAutocomplete();
+    }
+}
+
+// Autocomplete dropdown göster
+function showWikidataAutocomplete(results) {
+    const dropdown = document.getElementById('wikidataAutocomplete');
+    
+    let html = '';
+    results.forEach(item => {
+        const description = item.description || '';
+        html += `
+            <div style="padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background 0.2s;"
+                 onmouseover="this.style.background='#f8f9fa'"
+                 onmouseout="this.style.background='white'"
+                 onclick="selectWikidataItem('${item.id}')">
+                <div style="font-weight: 600; font-size: 13px; color: #2c3e50;">${item.label}</div>
+                <div style="font-size: 11px; color: #7f8c8d; margin-top: 2px;">
+                    ${description} <span style="color: #9b59b6;">(${item.id})</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    dropdown.innerHTML = html;
+    dropdown.style.display = 'block';
+}
+
+// Autocomplete dropdown gizle
+function hideWikidataAutocomplete() {
+    const dropdown = document.getElementById('wikidataAutocomplete');
+    dropdown.style.display = 'none';
+}
+
+// Autocomplete'ten item seç
+async function selectWikidataItem(qid) {
+    hideWikidataAutocomplete();
+    
+    // QID bilgilerini al
+    const itemData = await fetchWikidataItemData(qid);
+    
+    if (itemData && itemData.coordinates) {
+        // Koordinat varsa haritada göster
+        showCoordinateSearch(itemData.coordinates.lat, itemData.coordinates.lng);
+    } else {
+        // Koordinat yoksa sadece bilgi göster
+        alert(`ℹ️ ${itemData.label}\n\n${qid} öğesinin koordinat bilgisi yok.`);
+    }
+    
+    // Input'u temizle
+    document.getElementById('wikidataSearch').value = '';
+}
+
+// Wikidata item verilerini al (P625, P131, P17)
+async function fetchWikidataItemData(qid) {
+    try {
+        const url = `https://www.wikidata.org/w/api.php?` +
+            `action=wbgetentities&` +
+            `ids=${qid}&` +
+            `props=labels|claims&` +
+            `languages=tr|en&` +
+            `format=json&` +
+            `origin=*`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        const entity = data.entities[qid];
+        if (!entity) return null;
+        
+        const label = entity.labels.tr?.value || entity.labels.en?.value || qid;
+        
+        // P625 (coordinate location)
+        let coordinates = null;
+        if (entity.claims.P625 && entity.claims.P625[0]) {
+            const coordClaim = entity.claims.P625[0].mainsnak.datavalue.value;
+            coordinates = {
+                lat: coordClaim.latitude,
+                lng: coordClaim.longitude
+            };
+        }
+        
+        // P131 (located in)
+        let p131 = null;
+        if (entity.claims.P131 && entity.claims.P131[0]) {
+            const p131Id = entity.claims.P131[0].mainsnak.datavalue.value.id;
+            p131 = await fetchWikidataLabel(p131Id);
+        }
+        
+        // P17 (country)
+        let p17 = null;
+        if (entity.claims.P17 && entity.claims.P17[0]) {
+            const p17Id = entity.claims.P17[0].mainsnak.datavalue.value.id;
+            p17 = await fetchWikidataLabel(p17Id);
+        }
+        
+        return { qid, label, coordinates, p131, p17 };
+    } catch (error) {
+        console.error('Wikidata item data hatası:', error);
+        return null;
+    }
+}
+
+// Wikidata label al
+async function fetchWikidataLabel(qid) {
+    try {
+        const url = `https://www.wikidata.org/w/api.php?` +
+            `action=wbgetentities&` +
+            `ids=${qid}&` +
+            `props=labels&` +
+            `languages=tr|en&` +
+            `format=json&` +
+            `origin=*`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        const entity = data.entities[qid];
+        
+        return entity.labels.tr?.value || entity.labels.en?.value || qid;
+    } catch (error) {
+        return qid;
+    }
+}
+
+// Wikidata arama (Enter/Ara butonu)
+async function performWikidataSearch() {
+    const input = document.getElementById('wikidataSearch');
+    const query = input.value.trim();
+    
+    if (!query) {
+        alert('❌ Lütfen arama terimi girin!');
+        return;
+    }
+    
+    hideWikidataAutocomplete();
+    
+    // Arama yap
+    try {
+        const url = `https://www.wikidata.org/w/api.php?` +
+            `action=wbsearchentities&` +
+            `search=${encodeURIComponent(query)}&` +
+            `language=tr&` +
+            `limit=20&` +
+            `format=json&` +
+            `origin=*`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.search && data.search.length > 0) {
+            // Arama sonuçlarını sidebar'da göster
+            showWikidataSearchResults(query, data.search);
+        } else {
+            alert(`ℹ️ "${query}" için sonuç bulunamadı.`);
+        }
+    } catch (error) {
+        console.error('Wikidata arama hatası:', error);
+        alert('❌ Arama sırasında hata oluştu.');
+    }
+}
+
+// Wikidata arama sonuçlarını sidebar'da göster
+async function showWikidataSearchResults(query, results) {
+    const panel = document.getElementById('infoPanel');
+    if (!panel) return;
+    
+    // Aktif modları sıfırla
+    activeKEMarker = null;
+    activeCoordinate = null;
+    
+    panel.style.display = 'block';
+    
+    const isMobile = window.innerWidth <= 768;
+    
+    let html = `
+        <div id="panelHeader" style="position: relative; z-index: 1;">
+            <h2 style="color: #2c3e50; font-size: ${isMobile ? '14px' : '16px'}; margin: 0 0 10px 0;">
+                🔍 Arama: "${query}"
+            </h2>
+            <h3 style="margin: 10px 0; font-size: ${isMobile ? '13px' : '14px'}; padding-top: 10px; border-top: 2px solid #ecf0f1;">
+                Arama Sonuçları (${results.length})
+            </h3>
+        </div>
+        
+        <div id="qidListContainer" style="position: absolute; left: 15px; right: 15px; top: 80px; bottom: 15px; overflow-y: auto;"></div>
+    `;
+    
+    panel.innerHTML = html;
+    
+    // Mobilde resize handle ekle
+    if (isMobile) {
+        addMobileResizeHandle();
+    }
+    
+    // Sonuçları yükle (her biri için P625, P131, P17 al)
+    const container = document.getElementById('qidListContainer');
+    container.innerHTML = '<p style="color: #7f8c8d; text-align: center; padding: 20px;">Sonuçlar yükleniyor...</p>';
+    
+    const itemPromises = results.map(item => fetchWikidataItemData(item.id));
+    const itemsData = await Promise.all(itemPromises);
+    
+    let resultsHtml = '<div class="qid-list">';
+    
+    itemsData.forEach(item => {
+        if (!item) return;
+        
+        const hasCoords = item.coordinates !== null;
+        const gotoButton = hasCoords ? `
+            <button onclick="gotoWikidataLocation('${item.qid}', ${item.coordinates.lat}, ${item.coordinates.lng})"
+                    style="padding: 6px 12px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; transition: background 0.2s;"
+                    onmouseover="this.style.background='#2980b9'"
+                    onmouseout="this.style.background='#3498db'">
+                → Git
+            </button>
+        ` : '';
+        
+        resultsHtml += `
+            <div style="padding: 12px; background: #f8f9fa; border-radius: 6px; margin-bottom: 10px; border: 1px solid #e0e0e0;">
+                <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px;">
+                            <a href="https://www.wikidata.org/wiki/${item.qid}" 
+                               target="_blank"
+                               style="color: #2c3e50; text-decoration: none; border-bottom: 1px solid transparent; transition: all 0.2s;"
+                               onmouseover="this.style.color='#3498db'; this.style.borderBottomColor='#3498db';"
+                               onmouseout="this.style.color='#2c3e50'; this.style.borderBottomColor='transparent';">
+                                ${item.label}
+                            </a>
+                            <span style="color: #9b59b6; font-size: 11px; margin-left: 6px;">(${item.qid})</span>
+                        </div>
+                        ${item.p131 ? `<div style="font-size: 12px; color: #7f8c8d; margin-top: 3px;"><strong>P131:</strong> ${item.p131}</div>` : ''}
+                        ${item.p17 ? `<div style="font-size: 12px; color: #7f8c8d; margin-top: 3px;"><strong>P17:</strong> ${item.p17}</div>` : ''}
+                        ${!item.p131 && !item.p17 ? `<div style="font-size: 11px; color: #95a5a6; margin-top: 3px; font-style: italic;">Konum bilgisi yok</div>` : ''}
+                    </div>
+                    <div>
+                        ${gotoButton}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    resultsHtml += '</div>';
+    container.innerHTML = resultsHtml;
+}
+
+// Wikidata konumuna git
+function gotoWikidataLocation(qid, lat, lng) {
+    showCoordinateSearch(lat, lng);
+}
+
 // Giriş yap fonksiyonu
 function handleLogin() {
     alert('🔐 OAuth Girişi\n\nWikimedia hesabınızla giriş yapma özelliği yakında aktif olacak!\n\nŞu anda:\n• Anonim olarak katkıda bulunabilirsiniz\n• Tüm özellikler kullanılabilir\n• Veriler Firebase\'de saklanıyor\n\nGiriş yapınca:\n• Kullanıcı adınızla katkılarınız görünecek\n• Liderlik tablosunda yeriniz olacak\n• İstatistikleriniz profilde saklanacak');
