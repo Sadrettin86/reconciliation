@@ -827,7 +827,7 @@ function showContextMenu(lat, lng, point) {
              onmouseout="this.style.background='white'"
              onclick="searchFromContextMenu(${lat}, ${lng})">
             <span style="font-size: 16px;">🔍</span>
-            <span style="font-size: 13px; font-weight: 500;">Wikidata QID ara</span>
+            <span style="font-size: 13px; font-weight: 500;">Vikiveri'de ara</span>
         </div>
         <div style="padding: 6px 12px; font-size: 11px; color: #7f8c8d; border-top: 1px solid #ecf0f1;">
             ${lat.toFixed(6)}, ${lng.toFixed(6)}
