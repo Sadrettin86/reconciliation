@@ -507,6 +507,7 @@ async function fetchWikidataAutocomplete(query) {
             `action=wbsearchentities&` +
             `search=${encodeURIComponent(query)}&` +
             `language=tr&` +
+            `uselang=tr&` +
             `limit=10&` +
             `format=json&` +
             `origin=*`;
@@ -582,6 +583,7 @@ async function fetchWikidataItemData(qid) {
             `ids=${qid}&` +
             `props=labels|claims&` +
             `languages=tr|en&` +
+            `languagefallback=1&` +
             `format=json&` +
             `origin=*`;
         
@@ -617,7 +619,13 @@ async function fetchWikidataItemData(qid) {
             p17 = await fetchWikidataLabel(p17Id);
         }
         
-        return { qid, label, coordinates, p131, p17 };
+        // P11729 (Kültür Envanteri ID)
+        let p11729 = null;
+        if (entity.claims.P11729 && entity.claims.P11729[0]) {
+            p11729 = entity.claims.P11729[0].mainsnak.datavalue.value;
+        }
+        
+        return { qid, label, coordinates, p131, p17, p11729 };
     } catch (error) {
         console.error('Wikidata item data hatası:', error);
         return null;
@@ -632,6 +640,7 @@ async function fetchWikidataLabel(qid) {
             `ids=${qid}&` +
             `props=labels&` +
             `languages=tr|en&` +
+            `languagefallback=1&` +
             `format=json&` +
             `origin=*`;
         
@@ -663,6 +672,7 @@ async function performWikidataSearch() {
             `action=wbsearchentities&` +
             `search=${encodeURIComponent(query)}&` +
             `language=tr&` +
+            `uselang=tr&` +
             `limit=20&` +
             `format=json&` +
             `origin=*`;
@@ -737,11 +747,22 @@ async function showWikidataSearchResults(query, results) {
             </button>
         ` : '';
         
+        // P11729 (KE ID) linki
+        const keLink = item.p11729 ? `
+            <a href="https://kulturenvanteri.com/yer/?p=${item.p11729}" 
+               target="_blank"
+               style="color: #8b4513; font-size: 11px; font-weight: 600; text-decoration: none; margin-right: 6px; transition: color 0.2s;"
+               onmouseover="this.style.color='#654321';"
+               onmouseout="this.style.color='#8b4513';"
+               title="Kültür Envanteri'nde aç">${item.p11729}</a>
+        ` : '';
+        
         resultsHtml += `
             <div style="padding: 12px; background: #f8f9fa; border-radius: 6px; margin-bottom: 10px; border: 1px solid #e0e0e0;">
                 <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
                     <div style="flex: 1;">
                         <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px;">
+                            ${keLink}
                             <a href="https://www.wikidata.org/wiki/${item.qid}" 
                                target="_blank"
                                style="color: #2c3e50; text-decoration: none; border-bottom: 1px solid transparent; transition: all 0.2s;"
@@ -951,12 +972,13 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
     
     try {
         const sparqlQuery = `
-            SELECT ?place ?placeLabel ?location WHERE {
+            SELECT ?place ?placeLabel ?location ?keID WHERE {
               SERVICE wikibase:around {
                 ?place wdt:P625 ?location.
                 bd:serviceParam wikibase:center "Point(${lng} ${lat})"^^geo:wktLiteral.
                 bd:serviceParam wikibase:radius "${currentSearchRadius / 1000}".
               }
+              OPTIONAL { ?place wdt:P11729 ?keID. }
               SERVICE wikibase:label { bd:serviceParam wikibase:language "tr,en". }
             } LIMIT 100
         `;
@@ -977,6 +999,7 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
             const qid = binding.place.value.split('/').pop();
             const label = binding.placeLabel.value;
             const coords = binding.location.value.match(/Point\(([^ ]+) ([^ ]+)\)/);
+            const keID = binding.keID ? binding.keID.value : null; // P11729
             
             if (coords) {
                 const qidLng = parseFloat(coords[1]);
@@ -1002,7 +1025,7 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
                     console.log('P31 yüklenemedi:', qid);
                 }
                 
-                return { qid, label, distance, p31Label, lat: qidLat, lng: qidLng };
+                return { qid, label, distance, p31Label, lat: qidLat, lng: qidLng, keID };
             }
             return null;
         });
@@ -1039,6 +1062,16 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
             validQids.forEach(q => {
                 const p31Text = q.p31Label ? ` <span style="color: #7f8c8d; font-size: 11px;">(${q.p31Label})</span>` : '';
                 
+                // P11729 (KE ID) linki
+                const keLink = q.keID ? `
+                    <a href="https://kulturenvanteri.com/yer/?p=${q.keID}" 
+                       target="_blank"
+                       style="color: #8b4513; font-size: 11px; font-weight: 600; text-decoration: none; margin-left: 6px; transition: color 0.2s;"
+                       onmouseover="this.style.color='#654321';"
+                       onmouseout="this.style.color='#8b4513';"
+                       title="Kültür Envanteri'nde aç">${q.keID}</a>
+                ` : '';
+                
                 // KE ID Ekle butonu YOK!
                 html += `
                     <div class="qid-item" id="qid-item-${q.qid}" 
@@ -1047,6 +1080,7 @@ async function loadNearbyQIDsForCoordinate(lat, lng) {
                          onmouseout="unhighlightQIDMarker(); this.style.background='#f8f9fa'; this.style.borderColor='transparent';">
                         
                         <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
+                            ${keLink}
                             <a href="https://www.wikidata.org/wiki/${q.qid}" 
                                target="_blank" 
                                style="color: #2c3e50; text-decoration: none; transition: all 0.2s; border-bottom: 1px solid transparent;"
