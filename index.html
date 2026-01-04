@@ -51,9 +51,10 @@
             position: relative;
         }
         
-        /* Leaflet attribution - sidebar'ın altında kalmasın */
+        /* Leaflet attribution - sağ alt köşe */
         .leaflet-bottom.leaflet-right {
-            right: 390px !important;
+            right: 10px !important;
+            bottom: 10px !important;
         }
         
         @media (max-width: 768px) {
@@ -107,7 +108,7 @@
         .controls {
             position: absolute;
             top: 10px;
-            left: 60px;
+            left: 10px;
             z-index: 1000;
             background: white;
             padding: 10px;
@@ -540,23 +541,18 @@
             <label for="coordSearch" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 5px;">
                 Koordinat Ara:
             </label>
-            <div style="display: flex; align-items: center; gap: 6px;">
+            <div style="position: relative;">
                 <input type="text" 
                        id="coordSearch" 
                        placeholder="Koordinat ara" 
-                       style="flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 12px; transition: border-color 0.2s;"
+                       style="width: 100%; padding: 6px 35px 6px 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 12px; transition: border-color 0.2s; box-sizing: border-box;"
                        onfocus="this.style.borderColor='#3498db'"
                        onblur="this.style.borderColor='#ddd'"
                        onkeypress="if(event.key==='Enter') searchCoordinates()" />
-                <button onclick="searchCoordinates()" 
-                        style="padding: 6px 12px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s;"
-                        onmouseover="this.style.background='#2980b9'"
-                        onmouseout="this.style.background='#3498db'"
-                        title="Koordinatta ara">
-                    🔍
-                </button>
+                <span onclick="searchCoordinates()" 
+                      style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 16px; color: #95a5a6; user-select: none;"
+                      title="Koordinatta ara">🔍</span>
             </div>
-            <small style="color: #7f8c8d; font-size: 10px; display: block; margin-top: 3px;">Örn: 41.0082, 28.9784 veya 40.137965/26.399399</small>
         </div>
         
         <div id="status" class="status" style="display: none;"></div>
