@@ -1006,13 +1006,6 @@ async function exchangeCodeForToken(code) {
         alert('❌ Giriş yapılırken hata oluştu.');
     }
 }
-        // });
-        
-    } catch (error) {
-        console.error('OAuth error:', error);
-        alert('❌ Giriş yapılırken hata oluştu.');
-    }
-}
 
 // Fetch user profile
 async function fetchUserProfile(accessToken) {
