@@ -805,9 +805,6 @@ const OAUTH_CONFIG = {
     userInfoEndpoint: 'https://meta.wikimedia.org/w/rest.php/oauth2/resource/profile'
 };
 
-// Global user state
-let currentUser = null;
-
 // Check if returning from OAuth
 window.addEventListener('DOMContentLoaded', () => {
     checkOAuthCallback();
