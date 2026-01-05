@@ -1069,14 +1069,18 @@ async function exchangeCodeForToken(code) {
     }
 }
 
-// Fetch user profile using MediaWiki Action API
+// Fetch user profile via Cloudflare Worker (CORS fix)
 async function fetchUserProfile(accessToken) {
     try {
-        // Use MediaWiki Action API instead of OAuth2 profile endpoint
-        const response = await fetch('https://meta.wikimedia.org/w/api.php?action=query&meta=userinfo&format=json&origin=*', {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
+        // Use Cloudflare Worker proxy to avoid CORS
+        const PROXY_URL = 'https://keharita-oauth.ademozcna.workers.dev';
+        
+        const response = await fetch(PROXY_URL + '/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                access_token: accessToken
+            })
         });
         
         if (!response.ok) {
@@ -1084,27 +1088,17 @@ async function fetchUserProfile(accessToken) {
         }
         
         const data = await response.json();
-        console.log('👤 User profile data (MediaWiki API):', data);
+        console.log('👤 User profile data (via Worker):', data);
         
-        // MediaWiki API returns userinfo in query.userinfo
-        const userinfo = data.query && data.query.userinfo;
-        
-        if (!userinfo) {
-            throw new Error('No userinfo in response: ' + JSON.stringify(data));
+        if (!data.username) {
+            throw new Error('Username not found in response');
         }
         
-        const username = userinfo.name;
-        const userId = userinfo.id;
-        
-        if (!username) {
-            throw new Error('Username not found in userinfo: ' + JSON.stringify(userinfo));
-        }
-        
-        console.log('✅ Username found:', username);
+        console.log('✅ Username found:', data.username);
         
         return {
-            username: username,
-            sub: userId.toString(),
+            username: data.username,
+            sub: data.sub || data.id || 'unknown',
             accessToken: accessToken
         };
     } catch (error) {
@@ -1119,22 +1113,21 @@ function updateLoginButton() {
     if (!loginButton) return;
     
     if (currentUser && currentUser.username) {
-        // Show username with link to Wikidata profile
+        // Show "Çıkış Yap" button
         loginButton.innerHTML = `
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            ${currentUser.username}
+            Çıkış Yap
         `;
         loginButton.style.background = 'linear-gradient(135deg, #27ae60 0%, #229954 100%)';
         loginButton.style.cursor = 'pointer';
-        loginButton.title = 'Wikidata profiline git: User:' + currentUser.username;
+        loginButton.title = 'Oturumu kapat (' + currentUser.username + ')';
         
-        // Click handler - Wikidata profil sayfası
-        loginButton.onclick = () => {
-            window.open('https://www.wikidata.org/wiki/User:' + currentUser.username, '_blank');
-        };
+        // Click handler - Logout
+        loginButton.onclick = handleLogout;
     } else {
         // Show login
         loginButton.innerHTML = `
@@ -1149,6 +1142,28 @@ function updateLoginButton() {
         loginButton.style.cursor = 'pointer';
         loginButton.title = 'Wikimedia hesabınızla giriş yapın';
         loginButton.onclick = handleLogin;
+    }
+}
+
+// Logout function
+function handleLogout() {
+    if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
+        console.log('👋 Logging out...');
+        
+        // Clear user data
+        currentUser = null;
+        localStorage.removeItem('keharita_user');
+        localStorage.removeItem('oauth_code');
+        localStorage.removeItem('oauth_state');
+        localStorage.removeItem('oauth_code_verifier');
+        localStorage.removeItem('oauth_timestamp');
+        
+        console.log('✅ User data cleared');
+        
+        // Update button
+        updateLoginButton();
+        
+        alert('👋 Çıkış yapıldı!\n\nGüle güle!');
     }
 }
 
