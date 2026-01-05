@@ -805,6 +805,45 @@ const OAUTH_CONFIG = {
     userInfoEndpoint: 'https://meta.wikimedia.org/w/rest.php/oauth2/resource/profile'
 };
 
+// ============================================
+// PKCE (Proof Key for Code Exchange) Functions
+// ============================================
+
+// Generate random string for code_verifier
+function generateCodeVerifier() {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return base64URLEncode(array);
+}
+
+// Base64URL encode (without padding)
+function base64URLEncode(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let str = '';
+    bytes.forEach(byte => str += String.fromCharCode(byte));
+    return btoa(str)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+}
+
+// SHA-256 hash
+async function sha256(plain) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(plain);
+    return await crypto.subtle.digest('SHA-256', data);
+}
+
+// Generate code_challenge from code_verifier
+async function generateCodeChallenge(verifier) {
+    const hashed = await sha256(verifier);
+    return base64URLEncode(hashed);
+}
+
+// ============================================
+// OAuth Flow
+// ============================================
+
 // Check if returning from OAuth
 window.addEventListener('DOMContentLoaded', () => {
     checkOAuthCallback();
@@ -847,30 +886,46 @@ function checkOAuthCallback() {
     }
 }
 
-// Start OAuth flow
-function handleLogin() {
+// Start OAuth flow with PKCE
+async function handleLogin() {
     if (currentUser) {
         // Already logged in - show profile
         showUserProfile();
         return;
     }
     
-    // Generate random state for CSRF protection
-    const state = generateRandomString(32);
-    localStorage.setItem('oauth_state', state);
-    
-    // Build authorization URL
-    const params = new URLSearchParams({
-        response_type: 'code',
-        client_id: OAUTH_CONFIG.clientId,
-        redirect_uri: OAUTH_CONFIG.redirectUri,
-        state: state
-    });
-    
-    const authUrl = `${OAUTH_CONFIG.authEndpoint}?${params.toString()}`;
-    
-    // Redirect to Wikimedia OAuth
-    window.location.href = authUrl;
+    try {
+        // Generate PKCE parameters
+        const state = generateRandomString(32);
+        const codeVerifier = generateCodeVerifier();
+        const codeChallenge = await generateCodeChallenge(codeVerifier);
+        
+        // Store for later use
+        localStorage.setItem('oauth_state', state);
+        localStorage.setItem('oauth_code_verifier', codeVerifier);
+        
+        // Build authorization URL with PKCE
+        const params = new URLSearchParams({
+            response_type: 'code',
+            client_id: OAUTH_CONFIG.clientId,
+            redirect_uri: OAUTH_CONFIG.redirectUri,
+            state: state,
+            code_challenge: codeChallenge,
+            code_challenge_method: 'S256'
+        });
+        
+        const authUrl = `${OAUTH_CONFIG.authEndpoint}?${params.toString()}`;
+        
+        console.log('🔐 Starting OAuth with PKCE...');
+        console.log('Code Challenge:', codeChallenge);
+        
+        // Redirect to Wikimedia OAuth
+        window.location.href = authUrl;
+        
+    } catch (error) {
+        console.error('OAuth PKCE error:', error);
+        alert('❌ Giriş yapılırken hata oluştu: ' + error.message);
+    }
 }
 
 // Exchange authorization code for access token
@@ -883,9 +938,39 @@ async function exchangeCodeForToken(code) {
             loginButton.disabled = true;
         }
         
+        // Get code_verifier from localStorage (PKCE)
+        const codeVerifier = localStorage.getItem('oauth_code_verifier');
+        
+        if (!codeVerifier) {
+            console.error('❌ Code verifier not found!');
+            alert('❌ PKCE hatası: Code verifier bulunamadı.');
+            
+            if (loginButton) {
+                loginButton.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
+                    Giriş Yap
+                `;
+                loginButton.disabled = false;
+            }
+            return;
+        }
+        
+        console.log('🔐 Code Verifier found:', codeVerifier.substring(0, 20) + '...');
+        
+        // Clear PKCE verifier
+        localStorage.removeItem('oauth_code_verifier');
+        
         // Note: This requires a backend proxy because of CORS
         // For now, we'll store the code and show a message
-        alert('⚠️ OAuth token alındı!\n\nŞu an backend proxy gerekiyor.\nToken: ' + code.substring(0, 20) + '...\n\nGeliştirme aşamasında OAuth devre dışı bırakıldı.');
+        alert('✅ OAuth authorization başarılı!\n\n' +
+              'Code: ' + code.substring(0, 20) + '...\n' +
+              'Verifier: ' + codeVerifier.substring(0, 20) + '...\n\n' +
+              '⚠️ Token exchange için backend proxy gerekiyor.\n' +
+              'Geliştirme aşamasında OAuth devre dışı bırakıldı.');
         
         if (loginButton) {
             loginButton.innerHTML = `
@@ -899,10 +984,28 @@ async function exchangeCodeForToken(code) {
             loginButton.disabled = false;
         }
         
-        // TODO: Implement backend proxy for token exchange
+        // TODO: Implement backend proxy for token exchange with PKCE
         // const response = await fetch(PROXY_URL, {
         //     method: 'POST',
-        //     body: JSON.stringify({ code, client_id: OAUTH_CONFIG.clientId, redirect_uri: OAUTH_CONFIG.redirectUri })
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify({ 
+        //         code: code,
+        //         client_id: OAUTH_CONFIG.clientId,
+        //         redirect_uri: OAUTH_CONFIG.redirectUri,
+        //         code_verifier: codeVerifier  // ← PKCE
+        //     })
+        // });
+        // const { access_token } = await response.json();
+        // const user = await fetchUserProfile(access_token);
+        // currentUser = user;
+        // saveUserToStorage(user);
+        // updateLoginButton();
+        
+    } catch (error) {
+        console.error('OAuth error:', error);
+        alert('❌ Giriş yapılırken hata oluştu.');
+    }
+}
         // });
         
     } catch (error) {
