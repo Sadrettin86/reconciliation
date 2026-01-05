@@ -960,21 +960,84 @@ async function exchangeCodeForToken(code) {
         }
         
         console.log('🔐 Code Verifier found:', codeVerifier.substring(0, 20) + '...');
+        console.log('📡 Calling Cloudflare Worker proxy...');
         
         // Clear PKCE verifier
         localStorage.removeItem('oauth_code_verifier');
         
-        // Success message
-        console.log('✅ OAuth PKCE flow completed successfully');
-        console.log('📝 Code:', code.substring(0, 30) + '...');
-        console.log('🔐 Verifier:', codeVerifier.substring(0, 30) + '...');
+        // Backend proxy - Cloudflare Worker
+        const PROXY_URL = 'https://keharita-oauth.ademozcna.workers.dev';
         
-        alert('✅ Wikimedia hesabınızla kimlik doğrulaması başarılı!\n\n' +
-              '🎉 OAuth authorization tamamlandı.\n\n' +
-              '⚠️ Not: Token exchange için backend proxy gerekiyor.\n' +
-              'Backend hazır olduğunda kullanıcı adınız görünecek.\n\n' +
-              'Şu an anonim olarak devam edebilirsiniz.');
+        const response = await fetch(PROXY_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                code: code,
+                client_id: OAUTH_CONFIG.clientId,
+                redirect_uri: OAUTH_CONFIG.redirectUri,
+                code_verifier: codeVerifier
+            })
+        });
         
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('❌ Token exchange failed:', errorData);
+            
+            alert('❌ Token alınırken hata oluştu.\n\n' +
+                  'Hata: ' + (errorData.error || 'Unknown error') + '\n' +
+                  (errorData.details ? JSON.stringify(errorData.details) : ''));
+            
+            if (loginButton) {
+                loginButton.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
+                    Giriş Yap
+                `;
+                loginButton.disabled = false;
+            }
+            return;
+        }
+        
+        const tokenData = await response.json();
+        console.log('✅ Access token received!');
+        
+        // Fetch user profile
+        const user = await fetchUserProfile(tokenData.access_token);
+        
+        if (!user) {
+            console.error('❌ Failed to fetch user profile');
+            alert('❌ Kullanıcı bilgileri alınamadı.');
+            
+            if (loginButton) {
+                loginButton.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
+                    Giriş Yap
+                `;
+                loginButton.disabled = false;
+            }
+            return;
+        }
+        
+        // Save user
+        currentUser = user;
+        saveUserToStorage(user);
+        updateLoginButton();
+        
+        console.log('✅ Login successful! Welcome', user.username);
+        alert('✅ Giriş başarılı!\n\nHoş geldin, ' + user.username + '! 🎉');
+        
+    } catch (error) {
+        console.error('❌ OAuth error:', error);
+        alert('❌ Giriş yapılırken hata oluştu:\n\n' + error.message);
+        
+        const loginButton = document.getElementById('loginButton');
         if (loginButton) {
             loginButton.innerHTML = `
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -986,28 +1049,8 @@ async function exchangeCodeForToken(code) {
             `;
             loginButton.disabled = false;
         }
-        
-        // TODO: Implement backend proxy for token exchange with PKCE
-        // const PROXY_URL = 'https://keharita-oauth.workers.dev';  // Cloudflare Worker
-        // const response = await fetch(PROXY_URL, {
-        //     method: 'POST',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify({ 
-        //         code: code,
-        //         client_id: OAUTH_CONFIG.clientId,
-        //         redirect_uri: OAUTH_CONFIG.redirectUri,
-        //         code_verifier: codeVerifier  // ← PKCE
-        //     })
-        // });
-        // const { access_token } = await response.json();
-        // const user = await fetchUserProfile(access_token);
-        // currentUser = user;
-        // saveUserToStorage(user);
-        // updateLoginButton();
-        
-    } catch (error) {
-        console.error('OAuth error:', error);
-        alert('❌ Giriş yapılırken hata oluştu.');
+    }
+}
     }
 }
 
