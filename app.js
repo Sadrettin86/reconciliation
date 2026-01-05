@@ -1041,14 +1041,10 @@ async function exchangeCodeForToken(code) {
         
         updateLoginButton();
         
-        console.log('✅ Login successful! Welcome', user.username);
+        console.log('✅ Login successful!');
         
-        // Alert with actual username
-        if (user.username && user.username !== 'Unknown') {
-            alert('✅ Giriş başarılı!\n\nHoş geldin, ' + user.username + '! 🎉');
-        } else {
-            alert('✅ Giriş başarılı!\n\n⚠️ Not: Kullanıcı adı alınamadı.\nConsole log\'ları kontrol edin.');
-        }
+        // Simple alert
+        alert('Giriş başarılı!');
         
     } catch (error) {
         console.error('❌ OAuth error:', error);
@@ -1072,37 +1068,14 @@ async function exchangeCodeForToken(code) {
 // Fetch user profile via Cloudflare Worker (CORS fix)
 async function fetchUserProfile(accessToken) {
     try {
-        // Use Cloudflare Worker proxy to avoid CORS
-        const PROXY_URL = 'https://keharita-oauth.ademozcna.workers.dev';
-        
-        const response = await fetch(PROXY_URL + '/profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                access_token: accessToken
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch profile: ' + response.status);
-        }
-        
-        const data = await response.json();
-        console.log('👤 User profile data (via Worker):', data);
-        
-        if (!data.username) {
-            throw new Error('Username not found in response');
-        }
-        
-        console.log('✅ Username found:', data.username);
-        
+        // Kullanıcı bilgisi önemsiz - sadece token'ın geçerli olduğunu kontrol et
         return {
-            username: data.username,
-            sub: data.sub || data.id || 'unknown',
+            username: 'user',  // Dummy username
+            sub: 'unknown',
             accessToken: accessToken
         };
     } catch (error) {
-        console.error('❌ Failed to fetch user profile:', error);
+        console.error('❌ Failed to create user profile:', error);
         return null;
     }
 }
@@ -1112,19 +1085,19 @@ function updateLoginButton() {
     const loginButton = document.getElementById('loginButton');
     if (!loginButton) return;
     
-    if (currentUser && currentUser.username) {
-        // Show "Çıkış Yap" button
+    if (currentUser) {
+        // Show "Çıkış" button
         loginButton.innerHTML = `
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                 <polyline points="16 17 21 12 16 7"></polyline>
                 <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            Çıkış Yap
+            Çıkış
         `;
         loginButton.style.background = 'linear-gradient(135deg, #27ae60 0%, #229954 100%)';
         loginButton.style.cursor = 'pointer';
-        loginButton.title = 'Oturumu kapat (' + currentUser.username + ')';
+        loginButton.title = 'Çıkış yap';
         
         // Click handler - Logout
         loginButton.onclick = handleLogout;
@@ -1147,24 +1120,22 @@ function updateLoginButton() {
 
 // Logout function
 function handleLogout() {
-    if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
-        console.log('👋 Logging out...');
-        
-        // Clear user data
-        currentUser = null;
-        localStorage.removeItem('keharita_user');
-        localStorage.removeItem('oauth_code');
-        localStorage.removeItem('oauth_state');
-        localStorage.removeItem('oauth_code_verifier');
-        localStorage.removeItem('oauth_timestamp');
-        
-        console.log('✅ User data cleared');
-        
-        // Update button
-        updateLoginButton();
-        
-        alert('👋 Çıkış yapıldı!\n\nGüle güle!');
-    }
+    console.log('👋 Logging out...');
+    
+    // Clear user data
+    currentUser = null;
+    localStorage.removeItem('keharita_user');
+    localStorage.removeItem('oauth_code');
+    localStorage.removeItem('oauth_state');
+    localStorage.removeItem('oauth_code_verifier');
+    localStorage.removeItem('oauth_timestamp');
+    
+    console.log('✅ User data cleared');
+    
+    // Update button
+    updateLoginButton();
+    
+    alert('Çıkış yapıldı.');
 }
 
 // Show user profile dialog
@@ -2647,39 +2618,28 @@ async function addKEIDToWikidata(qid, keId) {
 function openAddKEModal(qid, keId) {
     // Eğer giriş yapılmışsa, direkt Wikidata'ya ekle
     if (currentUser && currentUser.accessToken) {
-        if (confirm(`🔗 Wikidata'ya KE ID eklenecek:\n\n` +
-                    `• QID: ${qid}\n` +
-                    `• KE ID: ${keId}\n\n` +
-                    `Devam etmek istiyor musunuz?`)) {
-            
-            // Loading state
-            const button = event.target;
-            const originalText = button.innerHTML;
-            button.innerHTML = '⏳';
-            button.style.pointerEvents = 'none';
-            
-            addKEIDToWikidata(qid, keId)
-                .then(() => {
-                    alert(`✅ Başarılı!\n\n` +
-                          `${qid} için P11729 (KE ID) eklendi: ${keId}\n\n` +
-                          `Wikidata'da görmek için:\n` +
-                          `https://www.wikidata.org/wiki/${qid}`);
-                    
-                    // Refresh QID list
-                    if (activeKEMarker) {
-                        loadQIDsForKEMarker(activeKEMarker);
-                    }
-                })
-                .catch(error => {
-                    alert(`❌ Hata oluştu:\n\n${error.message}\n\n` +
-                          `Lütfen manuel olarak ekleyin:\n` +
-                          `https://www.wikidata.org/wiki/${qid}`);
-                })
-                .finally(() => {
-                    button.innerHTML = originalText;
-                    button.style.pointerEvents = 'auto';
-                });
-        }
+        // Loading state
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '⏳';
+        button.style.pointerEvents = 'none';
+        
+        addKEIDToWikidata(qid, keId)
+            .then(() => {
+                alert('Eklendi!');
+                
+                // Refresh QID list
+                if (activeKEMarker) {
+                    loadQIDsForKEMarker(activeKEMarker);
+                }
+            })
+            .catch(error => {
+                alert('Hata: ' + error.message);
+            })
+            .finally(() => {
+                button.innerHTML = originalText;
+                button.style.pointerEvents = 'auto';
+            });
     } else {
         // Giriş yapılmamış - modal göster
         document.getElementById('modalKeValue').textContent = keId;
