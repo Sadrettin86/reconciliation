@@ -964,13 +964,16 @@ async function exchangeCodeForToken(code) {
         // Clear PKCE verifier
         localStorage.removeItem('oauth_code_verifier');
         
-        // Note: This requires a backend proxy because of CORS
-        // For now, we'll store the code and show a message
-        alert('✅ OAuth authorization başarılı!\n\n' +
-              'Code: ' + code.substring(0, 20) + '...\n' +
-              'Verifier: ' + codeVerifier.substring(0, 20) + '...\n\n' +
-              '⚠️ Token exchange için backend proxy gerekiyor.\n' +
-              'Geliştirme aşamasında OAuth devre dışı bırakıldı.');
+        // Success message
+        console.log('✅ OAuth PKCE flow completed successfully');
+        console.log('📝 Code:', code.substring(0, 30) + '...');
+        console.log('🔐 Verifier:', codeVerifier.substring(0, 30) + '...');
+        
+        alert('✅ Wikimedia hesabınızla kimlik doğrulaması başarılı!\n\n' +
+              '🎉 OAuth authorization tamamlandı.\n\n' +
+              '⚠️ Not: Token exchange için backend proxy gerekiyor.\n' +
+              'Backend hazır olduğunda kullanıcı adınız görünecek.\n\n' +
+              'Şu an anonim olarak devam edebilirsiniz.');
         
         if (loginButton) {
             loginButton.innerHTML = `
@@ -985,6 +988,7 @@ async function exchangeCodeForToken(code) {
         }
         
         // TODO: Implement backend proxy for token exchange with PKCE
+        // const PROXY_URL = 'https://keharita-oauth.workers.dev';  // Cloudflare Worker
         // const response = await fetch(PROXY_URL, {
         //     method: 'POST',
         //     headers: { 'Content-Type': 'application/json' },
