@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giriş Yapılıyor - keharita.app</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * {
@@ -108,26 +109,10 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Harita oluştur - Türkiye merkezli
-        const map = L.map('map', {
-            center: [39.0, 35.0],
-            zoom: 6,
-            zoomControl: false,
-            dragging: false,
-            scrollWheelZoom: false,
-            doubleClickZoom: false,
-            boxZoom: false,
-            keyboard: false,
-            attributionControl: false
-        });
+        // ============================================
+        // OAuth Callback Handler
+        // ============================================
         
-        // CartoDB Positron - minimal ve temiz
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19,
-            subdomains: 'abcd'
-        }).addTo(map);
-        
-        // OAuth işlemleri
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         const state = urlParams.get('state');
@@ -138,7 +123,7 @@
         const message = document.getElementById('message');
         const status = document.getElementById('status');
         
-        // Geri sayım fonksiyonu
+        // Countdown helper
         function countdown(seconds, callback) {
             let remaining = seconds;
             const countdownEl = document.createElement('p');
@@ -158,18 +143,50 @@
             }, 1000);
         }
         
+        // Initialize map (only for error cases - won't block redirect)
+        function initMap() {
+            try {
+                const map = L.map('map', {
+                    center: [39.0, 35.0],
+                    zoom: 6,
+                    zoomControl: false,
+                    dragging: false,
+                    scrollWheelZoom: false,
+                    doubleClickZoom: false,
+                    boxZoom: false,
+                    keyboard: false,
+                    attributionControl: false
+                });
+                
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 19,
+                    subdomains: 'abcd'
+                }).addTo(map);
+            } catch (e) {
+                console.error('Map init error:', e);
+            }
+        }
+        
+        // ============================================
+        // Handle OAuth Response
+        // ============================================
+        
         if (error) {
-            // Hata
+            // OAuth error
             spinner.style.display = 'none';
             title.textContent = 'Giriş başarısız';
             message.textContent = 'Bir sorun oluştu';
             
             status.className = 'message error-message';
             status.innerHTML = '<p style="margin: 0;">OAuth hatası: ' + error + '</p>';
+            
+            initMap();
             countdown(5, () => window.location.href = '/');
             
         } else if (code) {
-            // State kontrolü
+            // Success - got authorization code
+            
+            // Verify state (CSRF protection)
             const savedState = localStorage.getItem('oauth_state');
             if (state && savedState && state !== savedState) {
                 spinner.style.display = 'none';
@@ -177,27 +194,31 @@
                 message.textContent = 'CSRF koruması başarısız';
                 
                 status.className = 'message error-message';
+                
+                initMap();
                 countdown(5, () => window.location.href = '/');
-                return;
+            } else {
+                // Valid state - save code and redirect
+                localStorage.removeItem('oauth_state');
+                localStorage.setItem('oauth_code', code);
+                localStorage.setItem('oauth_timestamp', Date.now().toString());
+                
+                title.textContent = 'Giriş başarılı';
+                message.textContent = 'Yönlendiriliyorsunuz...';
+                
+                // Fast redirect (no map needed)
+                setTimeout(() => window.location.href = '/', 500);
             }
             
-            // Başarılı
-            localStorage.removeItem('oauth_state');
-            localStorage.setItem('oauth_code', code);
-            localStorage.setItem('oauth_timestamp', Date.now().toString());
-            
-            title.textContent = 'Giriş başarılı';
-            message.textContent = 'Yönlendiriliyorsunuz...';
-            
-            setTimeout(() => window.location.href = '/', 1000);
-            
         } else {
-            // Geçersiz
+            // Invalid request
             spinner.style.display = 'none';
             title.textContent = 'Geçersiz istek';
             message.textContent = 'Lütfen ana sayfadan tekrar deneyin';
             
             status.className = 'message error-message';
+            
+            initMap();
             countdown(5, () => window.location.href = '/');
         }
     </script>
