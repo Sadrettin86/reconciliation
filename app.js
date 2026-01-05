@@ -1069,10 +1069,11 @@ async function exchangeCodeForToken(code) {
     }
 }
 
-// Fetch user profile
+// Fetch user profile using MediaWiki Action API
 async function fetchUserProfile(accessToken) {
     try {
-        const response = await fetch(OAUTH_CONFIG.userInfoEndpoint, {
+        // Use MediaWiki Action API instead of OAuth2 profile endpoint
+        const response = await fetch('https://meta.wikimedia.org/w/api.php?action=query&meta=userinfo&format=json&origin=*', {
             headers: {
                 'Authorization': `Bearer ${accessToken}`
             }
@@ -1083,18 +1084,27 @@ async function fetchUserProfile(accessToken) {
         }
         
         const data = await response.json();
-        console.log('👤 User profile data:', data);
+        console.log('👤 User profile data (MediaWiki API):', data);
         
-        // Wikimedia returns 'username' field
-        const username = data.username || data.name || 'Unknown';
+        // MediaWiki API returns userinfo in query.userinfo
+        const userinfo = data.query && data.query.userinfo;
         
-        if (!username || username === 'Unknown') {
-            console.error('⚠️ Username not found in response:', data);
+        if (!userinfo) {
+            throw new Error('No userinfo in response: ' + JSON.stringify(data));
         }
+        
+        const username = userinfo.name;
+        const userId = userinfo.id;
+        
+        if (!username) {
+            throw new Error('Username not found in userinfo: ' + JSON.stringify(userinfo));
+        }
+        
+        console.log('✅ Username found:', username);
         
         return {
             username: username,
-            sub: data.sub,
+            sub: userId.toString(),
             accessToken: accessToken
         };
     } catch (error) {
