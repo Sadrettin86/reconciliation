@@ -1025,13 +1025,30 @@ async function exchangeCodeForToken(code) {
             return;
         }
         
+        // Debug: Check user object
+        console.log('👤 User object:', {
+            username: user.username,
+            sub: user.sub,
+            hasToken: !!user.accessToken
+        });
+        
         // Save user
         currentUser = user;
         saveUserToStorage(user);
+        
+        console.log('💾 User saved to localStorage');
+        console.log('🔄 Updating login button...');
+        
         updateLoginButton();
         
         console.log('✅ Login successful! Welcome', user.username);
-        alert('✅ Giriş başarılı!\n\nHoş geldin, ' + user.username + '! 🎉');
+        
+        // Alert with actual username
+        if (user.username && user.username !== 'Unknown') {
+            alert('✅ Giriş başarılı!\n\nHoş geldin, ' + user.username + '! 🎉');
+        } else {
+            alert('✅ Giriş başarılı!\n\n⚠️ Not: Kullanıcı adı alınamadı.\nConsole log\'ları kontrol edin.');
+        }
         
     } catch (error) {
         console.error('❌ OAuth error:', error);
@@ -1061,15 +1078,27 @@ async function fetchUserProfile(accessToken) {
             }
         });
         
+        if (!response.ok) {
+            throw new Error('Failed to fetch profile: ' + response.status);
+        }
+        
         const data = await response.json();
+        console.log('👤 User profile data:', data);
+        
+        // Wikimedia returns 'username' field
+        const username = data.username || data.name || 'Unknown';
+        
+        if (!username || username === 'Unknown') {
+            console.error('⚠️ Username not found in response:', data);
+        }
         
         return {
-            username: data.username,
+            username: username,
             sub: data.sub,
             accessToken: accessToken
         };
     } catch (error) {
-        console.error('Failed to fetch user profile:', error);
+        console.error('❌ Failed to fetch user profile:', error);
         return null;
     }
 }
@@ -2516,14 +2545,24 @@ async function addKEIDToWikidata(qid, keId) {
             }
         });
         
+        if (!tokenResponse.ok) {
+            throw new Error(`Token request failed: ${tokenResponse.status}`);
+        }
+        
         const tokenData = await tokenResponse.json();
+        console.log('📋 Token response:', tokenData);
+        
+        if (!tokenData.query || !tokenData.query.tokens) {
+            throw new Error('Invalid token response: ' + JSON.stringify(tokenData));
+        }
+        
         const csrfToken = tokenData.query.tokens.csrftoken;
         
         if (!csrfToken || csrfToken === '+\\') {
             throw new Error('Failed to get CSRF token');
         }
         
-        console.log('✅ CSRF token received');
+        console.log('✅ CSRF token received:', csrfToken.substring(0, 20) + '...');
         
         // Create claim (P11729 = Kültür Envanteri ID)
         const claim = {
