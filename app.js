@@ -2521,93 +2521,47 @@ document.addEventListener('DOMContentLoaded', initMap);
 // WIKIDATA EDIT API - P11729 (KE ID) EKLEME
 // ============================================
 
-// Add P11729 (Kültür Envanteri ID) to Wikidata item
+// Add P11729 (Kültür Envanteri ID) to Wikidata item via Worker
 async function addKEIDToWikidata(qid, keId) {
     // Check if user is logged in
     if (!currentUser || !currentUser.accessToken) {
-        alert('❌ Bu işlem için giriş yapmalısınız.\n\n' +
-              'Lütfen sağ üstteki "Giriş Yap" butonuna tıklayarak\n' +
-              'Wikimedia hesabınızla giriş yapın.');
+        alert('Bu işlem için giriş yapmalısınız.');
         return false;
     }
     
     try {
         console.log(`📝 Adding P11729: ${keId} to ${qid}`);
         
-        // Get CSRF token
-        const tokenResponse = await fetch('https://www.wikidata.org/w/api.php?action=query&meta=tokens&format=json&origin=*', {
-            headers: {
-                'Authorization': `Bearer ${currentUser.accessToken}`
-            }
-        });
+        // Use Cloudflare Worker proxy
+        const PROXY_URL = 'https://keharita-oauth.ademozcna.workers.dev';
         
-        if (!tokenResponse.ok) {
-            throw new Error(`Token request failed: ${tokenResponse.status}`);
-        }
-        
-        const tokenData = await tokenResponse.json();
-        console.log('📋 Token response:', tokenData);
-        
-        if (!tokenData.query || !tokenData.query.tokens) {
-            throw new Error('Invalid token response: ' + JSON.stringify(tokenData));
-        }
-        
-        const csrfToken = tokenData.query.tokens.csrftoken;
-        
-        if (!csrfToken || csrfToken === '+\\') {
-            throw new Error('Failed to get CSRF token');
-        }
-        
-        console.log('✅ CSRF token received:', csrfToken.substring(0, 20) + '...');
-        
-        // Create claim (P11729 = Kültür Envanteri ID)
-        const claim = {
-            entity: qid,
-            property: 'P11729',
-            snaktype: 'value',
-            value: keId.toString()
-        };
-        
-        // Add statement to Wikidata
-        const editResponse = await fetch('https://www.wikidata.org/w/api.php', {
+        const response = await fetch(PROXY_URL + '/add-claim', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${currentUser.accessToken}`,
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: new URLSearchParams({
-                action: 'wbcreateclaim',
-                format: 'json',
-                entity: qid,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                access_token: currentUser.accessToken,
+                qid: qid,
                 property: 'P11729',
-                snaktype: 'value',
-                value: `"${keId}"`,
-                token: csrfToken,
-                summary: `Added Kültür Envanteri ID via keharita.app`,
-                bot: '0'
+                value: keId.toString()
             })
         });
         
-        const editData = await editResponse.json();
-        
-        if (editData.error) {
-            throw new Error(editData.error.info || 'Unknown error');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Unknown error');
         }
         
-        if (editData.success) {
-            console.log('✅ P11729 successfully added to', qid);
-            
-            // Update Firebase
-            await firebase.database().ref(`qidMatches/${keId}`).set({
-                qid: qid,
-                timestamp: Date.now(),
-                user: currentUser.username
-            });
-            
-            return true;
-        }
+        const data = await response.json();
+        console.log('✅ P11729 successfully added:', data);
         
-        throw new Error('API returned no success flag');
+        // Update Firebase
+        await firebase.database().ref(`qidMatches/${keId}`).set({
+            qid: qid,
+            timestamp: Date.now(),
+            user: 'user'
+        });
+        
+        return true;
         
     } catch (error) {
         console.error('❌ Wikidata edit error:', error);
