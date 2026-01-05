@@ -1079,8 +1079,8 @@ function updateLoginButton() {
     const loginButton = document.getElementById('loginButton');
     if (!loginButton) return;
     
-    if (currentUser) {
-        // Show username
+    if (currentUser && currentUser.username) {
+        // Show username with link to Wikidata profile
         loginButton.innerHTML = `
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -1089,6 +1089,13 @@ function updateLoginButton() {
             ${currentUser.username}
         `;
         loginButton.style.background = 'linear-gradient(135deg, #27ae60 0%, #229954 100%)';
+        loginButton.style.cursor = 'pointer';
+        loginButton.title = 'Wikidata profiline git: User:' + currentUser.username;
+        
+        // Click handler - Wikidata profil sayfası
+        loginButton.onclick = () => {
+            window.open('https://www.wikidata.org/wiki/User:' + currentUser.username, '_blank');
+        };
     } else {
         // Show login
         loginButton.innerHTML = `
@@ -1100,6 +1107,9 @@ function updateLoginButton() {
             Giriş Yap
         `;
         loginButton.style.background = 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)';
+        loginButton.style.cursor = 'pointer';
+        loginButton.title = 'Wikimedia hesabınızla giriş yapın';
+        loginButton.onclick = handleLogin;
     }
 }
 
@@ -2482,13 +2492,139 @@ function updateMobileCirclePosition() {
 document.addEventListener('DOMContentLoaded', initMap);
 
 // Wikidata modal fonksiyonları
+// ============================================
+// WIKIDATA EDIT API - P11729 (KE ID) EKLEME
+// ============================================
+
+// Add P11729 (Kültür Envanteri ID) to Wikidata item
+async function addKEIDToWikidata(qid, keId) {
+    // Check if user is logged in
+    if (!currentUser || !currentUser.accessToken) {
+        alert('❌ Bu işlem için giriş yapmalısınız.\n\n' +
+              'Lütfen sağ üstteki "Giriş Yap" butonuna tıklayarak\n' +
+              'Wikimedia hesabınızla giriş yapın.');
+        return false;
+    }
+    
+    try {
+        console.log(`📝 Adding P11729: ${keId} to ${qid}`);
+        
+        // Get CSRF token
+        const tokenResponse = await fetch('https://www.wikidata.org/w/api.php?action=query&meta=tokens&format=json&origin=*', {
+            headers: {
+                'Authorization': `Bearer ${currentUser.accessToken}`
+            }
+        });
+        
+        const tokenData = await tokenResponse.json();
+        const csrfToken = tokenData.query.tokens.csrftoken;
+        
+        if (!csrfToken || csrfToken === '+\\') {
+            throw new Error('Failed to get CSRF token');
+        }
+        
+        console.log('✅ CSRF token received');
+        
+        // Create claim (P11729 = Kültür Envanteri ID)
+        const claim = {
+            entity: qid,
+            property: 'P11729',
+            snaktype: 'value',
+            value: keId.toString()
+        };
+        
+        // Add statement to Wikidata
+        const editResponse = await fetch('https://www.wikidata.org/w/api.php', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentUser.accessToken}`,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                action: 'wbcreateclaim',
+                format: 'json',
+                entity: qid,
+                property: 'P11729',
+                snaktype: 'value',
+                value: `"${keId}"`,
+                token: csrfToken,
+                summary: `Added Kültür Envanteri ID via keharita.app`,
+                bot: '0'
+            })
+        });
+        
+        const editData = await editResponse.json();
+        
+        if (editData.error) {
+            throw new Error(editData.error.info || 'Unknown error');
+        }
+        
+        if (editData.success) {
+            console.log('✅ P11729 successfully added to', qid);
+            
+            // Update Firebase
+            await firebase.database().ref(`qidMatches/${keId}`).set({
+                qid: qid,
+                timestamp: Date.now(),
+                user: currentUser.username
+            });
+            
+            return true;
+        }
+        
+        throw new Error('API returned no success flag');
+        
+    } catch (error) {
+        console.error('❌ Wikidata edit error:', error);
+        throw error;
+    }
+}
+
 function openAddKEModal(qid, keId) {
-    document.getElementById('modalKeValue').textContent = keId;
-    document.getElementById('openWikidataBtn').onclick = function() {
-        window.open(`https://www.wikidata.org/wiki/${qid}`, '_blank');
-        closeWikidataModal();
-    };
-    document.getElementById('wikidataModal').classList.add('active');
+    // Eğer giriş yapılmışsa, direkt Wikidata'ya ekle
+    if (currentUser && currentUser.accessToken) {
+        if (confirm(`🔗 Wikidata'ya KE ID eklenecek:\n\n` +
+                    `• QID: ${qid}\n` +
+                    `• KE ID: ${keId}\n\n` +
+                    `Devam etmek istiyor musunuz?`)) {
+            
+            // Loading state
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.innerHTML = '⏳';
+            button.style.pointerEvents = 'none';
+            
+            addKEIDToWikidata(qid, keId)
+                .then(() => {
+                    alert(`✅ Başarılı!\n\n` +
+                          `${qid} için P11729 (KE ID) eklendi: ${keId}\n\n` +
+                          `Wikidata'da görmek için:\n` +
+                          `https://www.wikidata.org/wiki/${qid}`);
+                    
+                    // Refresh QID list
+                    if (activeKEMarker) {
+                        loadQIDsForKEMarker(activeKEMarker);
+                    }
+                })
+                .catch(error => {
+                    alert(`❌ Hata oluştu:\n\n${error.message}\n\n` +
+                          `Lütfen manuel olarak ekleyin:\n` +
+                          `https://www.wikidata.org/wiki/${qid}`);
+                })
+                .finally(() => {
+                    button.innerHTML = originalText;
+                    button.style.pointerEvents = 'auto';
+                });
+        }
+    } else {
+        // Giriş yapılmamış - modal göster
+        document.getElementById('modalKeValue').textContent = keId;
+        document.getElementById('openWikidataBtn').onclick = function() {
+            window.open(`https://www.wikidata.org/wiki/${qid}`, '_blank');
+            closeWikidataModal();
+        };
+        document.getElementById('wikidataModal').classList.add('active');
+    }
 }
 
 function closeWikidataModal() {
