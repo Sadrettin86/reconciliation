@@ -5,222 +5,90 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giriş Yapılıyor - keharita.app</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             min-height: 100vh;
-            position: relative;
-            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-        
-        #map {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            filter: grayscale(30%);
-        }
-        
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.3);
-            backdrop-filter: blur(1px);
-            z-index: 2;
-        }
-        
         .container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
             text-align: center;
-            color: #2c3e50;
-            z-index: 3;
+            color: white;
         }
-        
         .spinner {
             width: 50px;
             height: 50px;
-            border: 3px solid rgba(44, 62, 80, 0.2);
-            border-top: 3px solid #2c3e50;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            margin: 0 auto 30px;
+            margin: 0 auto 20px;
         }
-        
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
         h1 {
-            font-size: 32px;
+            font-size: 24px;
             font-weight: 300;
-            margin-bottom: 15px;
-            letter-spacing: -0.5px;
-            text-shadow: 0 2px 4px rgba(255, 255, 255, 0.8);
+            margin-bottom: 10px;
         }
-        
         p {
-            font-size: 18px;
-            opacity: 0.8;
-            font-weight: 300;
-            text-shadow: 0 1px 3px rgba(255, 255, 255, 0.8);
-        }
-        
-        .message {
-            margin-top: 30px;
-            padding: 20px 30px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 8px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        .error-message {
-            background: rgba(231, 76, 60, 0.15);
-            border: 1px solid rgba(231, 76, 60, 0.3);
+            font-size: 14px;
+            opacity: 0.9;
         }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    <div class="overlay"></div>
     <div class="container">
-        <div class="spinner" id="spinner"></div>
+        <div class="spinner"></div>
         <h1 id="title">Giriş yapılıyor...</h1>
         <p id="message">Lütfen bekleyin</p>
-        <div id="status"></div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // ============================================
-        // OAuth Callback Handler
-        // ============================================
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const state = urlParams.get('state');
-        const error = urlParams.get('error');
-        
-        const spinner = document.getElementById('spinner');
-        const title = document.getElementById('title');
-        const message = document.getElementById('message');
-        const status = document.getElementById('status');
-        
-        // Countdown helper
-        function countdown(seconds, callback) {
-            let remaining = seconds;
-            const countdownEl = document.createElement('p');
-            countdownEl.style.fontSize = '14px';
-            countdownEl.style.marginTop = '10px';
-            countdownEl.textContent = `${remaining} saniye sonra ana sayfaya dönülecek...`;
-            status.appendChild(countdownEl);
+        // OAuth callback handler
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
             
-            const interval = setInterval(() => {
-                remaining--;
-                if (remaining > 0) {
-                    countdownEl.textContent = `${remaining} saniye sonra ana sayfaya dönülecek...`;
-                } else {
-                    clearInterval(interval);
-                    callback();
-                }
-            }, 1000);
-        }
-        
-        // Initialize map (only for error cases - won't block redirect)
-        function initMap() {
-            try {
-                const map = L.map('map', {
-                    center: [39.0, 35.0],
-                    zoom: 6,
-                    zoomControl: false,
-                    dragging: false,
-                    scrollWheelZoom: false,
-                    doubleClickZoom: false,
-                    boxZoom: false,
-                    keyboard: false,
-                    attributionControl: false
-                });
+            const title = document.getElementById('title');
+            const message = document.getElementById('message');
+            
+            if (error) {
+                // Error
+                title.textContent = 'Giriş başarısız';
+                message.textContent = 'Hata: ' + error;
+                setTimeout(() => window.location.href = '/', 3000);
                 
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                    maxZoom: 19,
-                    subdomains: 'abcd'
-                }).addTo(map);
-            } catch (e) {
-                console.error('Map init error:', e);
-            }
-        }
-        
-        // ============================================
-        // Handle OAuth Response
-        // ============================================
-        
-        if (error) {
-            // OAuth error
-            spinner.style.display = 'none';
-            title.textContent = 'Giriş başarısız';
-            message.textContent = 'Bir sorun oluştu';
-            
-            status.className = 'message error-message';
-            status.innerHTML = '<p style="margin: 0;">OAuth hatası: ' + error + '</p>';
-            
-            initMap();
-            countdown(5, () => window.location.href = '/');
-            
-        } else if (code) {
-            // Success - got authorization code
-            
-            // Verify state (CSRF protection)
-            const savedState = localStorage.getItem('oauth_state');
-            if (state && savedState && state !== savedState) {
-                spinner.style.display = 'none';
-                title.textContent = 'Güvenlik Hatası';
-                message.textContent = 'CSRF koruması başarısız';
+            } else if (code) {
+                // Success - no state check!
+                console.log('✅ OAuth code received');
                 
-                status.className = 'message error-message';
-                
-                initMap();
-                countdown(5, () => window.location.href = '/');
-            } else {
-                // Valid state - save code and redirect
                 localStorage.removeItem('oauth_state');
                 localStorage.setItem('oauth_code', code);
-                localStorage.setItem('oauth_timestamp', Date.now().toString());
                 
                 title.textContent = 'Giriş başarılı';
                 message.textContent = 'Yönlendiriliyorsunuz...';
                 
-                // Fast redirect (no map needed)
                 setTimeout(() => window.location.href = '/', 500);
+                
+            } else {
+                // Invalid
+                title.textContent = 'Geçersiz istek';
+                message.textContent = 'Lütfen tekrar deneyin';
+                setTimeout(() => window.location.href = '/', 3000);
             }
-            
-        } else {
-            // Invalid request
-            spinner.style.display = 'none';
-            title.textContent = 'Geçersiz istek';
-            message.textContent = 'Lütfen ana sayfadan tekrar deneyin';
-            
-            status.className = 'message error-message';
-            
-            initMap();
-            countdown(5, () => window.location.href = '/');
-        }
+        })();
     </script>
 </body>
 </html>
