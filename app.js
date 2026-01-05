@@ -796,8 +796,214 @@ function gotoWikidataLocation(qid, lat, lng) {
 }
 
 // Giriş yap fonksiyonu
+// OAuth Configuration
+const OAUTH_CONFIG = {
+    clientId: '6495296455dbf4d018bf3137a5e4a3fb',
+    redirectUri: 'https://keharita.app/callback',
+    authEndpoint: 'https://meta.wikimedia.org/w/rest.php/oauth2/authorize',
+    tokenEndpoint: 'https://meta.wikimedia.org/w/rest.php/oauth2/access_token',
+    userInfoEndpoint: 'https://meta.wikimedia.org/w/rest.php/oauth2/resource/profile'
+};
+
+// Global user state
+let currentUser = null;
+
+// Check if returning from OAuth
+window.addEventListener('DOMContentLoaded', () => {
+    checkOAuthCallback();
+    loadUserFromStorage();
+    updateLoginButton();
+});
+
+// Load user from localStorage
+function loadUserFromStorage() {
+    const userJson = localStorage.getItem('keharita_user');
+    if (userJson) {
+        try {
+            currentUser = JSON.parse(userJson);
+            console.log('User loaded:', currentUser.username);
+        } catch (e) {
+            console.error('Failed to parse user data:', e);
+            localStorage.removeItem('keharita_user');
+        }
+    }
+}
+
+// Save user to localStorage
+function saveUserToStorage(user) {
+    localStorage.setItem('keharita_user', JSON.stringify(user));
+}
+
+// Check OAuth callback
+function checkOAuthCallback() {
+    // Check if returning from callback page
+    const code = localStorage.getItem('oauth_code');
+    
+    if (code) {
+        console.log('OAuth code found:', code.substring(0, 20) + '...');
+        
+        // Clear code
+        localStorage.removeItem('oauth_code');
+        
+        // Exchange code for token
+        exchangeCodeForToken(code);
+    }
+}
+
+// Start OAuth flow
 function handleLogin() {
-    alert('🔐 OAuth Girişi\n\nWikimedia hesabınızla giriş yapma özelliği yakında aktif olacak!\n\nŞu anda:\n• Anonim olarak katkıda bulunabilirsiniz\n• Tüm özellikler kullanılabilir\n• Veriler Firebase\'de saklanıyor\n\nGiriş yapınca:\n• Kullanıcı adınızla katkılarınız görünecek\n• Liderlik tablosunda yeriniz olacak\n• İstatistikleriniz profilde saklanacak');
+    if (currentUser) {
+        // Already logged in - show profile
+        showUserProfile();
+        return;
+    }
+    
+    // Generate random state for CSRF protection
+    const state = generateRandomString(32);
+    localStorage.setItem('oauth_state', state);
+    
+    // Build authorization URL
+    const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: OAUTH_CONFIG.clientId,
+        redirect_uri: OAUTH_CONFIG.redirectUri,
+        state: state
+    });
+    
+    const authUrl = `${OAUTH_CONFIG.authEndpoint}?${params.toString()}`;
+    
+    // Redirect to Wikimedia OAuth
+    window.location.href = authUrl;
+}
+
+// Exchange authorization code for access token
+async function exchangeCodeForToken(code) {
+    try {
+        // Show loading
+        const loginButton = document.getElementById('loginButton');
+        if (loginButton) {
+            loginButton.innerHTML = '<span style="font-size: 12px;">⏳ Giriş yapılıyor...</span>';
+            loginButton.disabled = true;
+        }
+        
+        // Note: This requires a backend proxy because of CORS
+        // For now, we'll store the code and show a message
+        alert('⚠️ OAuth token alındı!\n\nŞu an backend proxy gerekiyor.\nToken: ' + code.substring(0, 20) + '...\n\nGeliştirme aşamasında OAuth devre dışı bırakıldı.');
+        
+        if (loginButton) {
+            loginButton.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                    <polyline points="10 17 15 12 10 7"></polyline>
+                    <line x1="15" y1="12" x2="3" y2="12"></line>
+                </svg>
+                Giriş Yap
+            `;
+            loginButton.disabled = false;
+        }
+        
+        // TODO: Implement backend proxy for token exchange
+        // const response = await fetch(PROXY_URL, {
+        //     method: 'POST',
+        //     body: JSON.stringify({ code, client_id: OAUTH_CONFIG.clientId, redirect_uri: OAUTH_CONFIG.redirectUri })
+        // });
+        
+    } catch (error) {
+        console.error('OAuth error:', error);
+        alert('❌ Giriş yapılırken hata oluştu.');
+    }
+}
+
+// Fetch user profile
+async function fetchUserProfile(accessToken) {
+    try {
+        const response = await fetch(OAUTH_CONFIG.userInfoEndpoint, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        return {
+            username: data.username,
+            sub: data.sub,
+            accessToken: accessToken
+        };
+    } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+        return null;
+    }
+}
+
+// Update login button based on user state
+function updateLoginButton() {
+    const loginButton = document.getElementById('loginButton');
+    if (!loginButton) return;
+    
+    if (currentUser) {
+        // Show username
+        loginButton.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            ${currentUser.username}
+        `;
+        loginButton.style.background = 'linear-gradient(135deg, #27ae60 0%, #229954 100%)';
+    } else {
+        // Show login
+        loginButton.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line>
+            </svg>
+            Giriş Yap
+        `;
+        loginButton.style.background = 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)';
+    }
+}
+
+// Show user profile dialog
+function showUserProfile() {
+    const stats = `
+👤 **Kullanıcı Bilgileri**
+
+**Kullanıcı adı:** ${currentUser.username}
+**ID:** ${currentUser.sub}
+
+**Katkılar:**
+• Toplam eşleştirme: Yakında
+• Yeni öğe: Yakında
+• Liderlik sırası: Yakında
+
+Bu özellikler backend hazır olduğunda aktif olacak.
+    `;
+    
+    const action = confirm(stats + '\n\nÇıkış yapmak ister misiniz?');
+    
+    if (action) {
+        handleLogout();
+    }
+}
+
+// Logout
+function handleLogout() {
+    currentUser = null;
+    localStorage.removeItem('keharita_user');
+    updateLoginButton();
+    alert('✅ Çıkış yapıldı.');
+}
+
+// Generate random string for state
+function generateRandomString(length) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
 }
 
 // Sağ tıklama context menu göster
