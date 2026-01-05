@@ -2584,7 +2584,7 @@ function openAddKEModal(qid, keId) {
                 
                 // Refresh QID list
                 if (activeKEMarker) {
-                    loadQIDsForKEMarker(activeKEMarker);
+loadNearbyQIDs(activeKEMarker.keItem.lat, activeKEMarker.keItem.lng, currentSearchRadius);
                 }
             })
             .catch(error => {
