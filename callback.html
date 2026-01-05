@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giriş Yapılıyor - KE Harita</title>
+    <title>Giriş Yapılıyor - keharita.app</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * {
@@ -107,11 +107,10 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Harita oluştur - Türkiye merkezli
         const map = L.map('map', {
-            center: [39.0, 35.0], // Türkiye merkezi
+            center: [39.0, 35.0],
             zoom: 6,
             zoomControl: false,
             dragging: false,
@@ -131,6 +130,7 @@
         // OAuth işlemleri
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
+        const state = urlParams.get('state');
         const error = urlParams.get('error');
         
         const spinner = document.getElementById('spinner');
@@ -165,15 +165,29 @@
             message.textContent = 'Bir sorun oluştu';
             
             status.className = 'message error-message';
+            status.innerHTML = '<p style="margin: 0;">OAuth hatası: ' + error + '</p>';
             countdown(5, () => window.location.href = '/');
             
         } else if (code) {
-            // Başarılı
-            title.textContent = 'Giriş başarılı';
-            message.textContent = 'Yönlendiriliyorsunuz...';
+            // State kontrolü
+            const savedState = localStorage.getItem('oauth_state');
+            if (state && savedState && state !== savedState) {
+                spinner.style.display = 'none';
+                title.textContent = 'Güvenlik Hatası';
+                message.textContent = 'CSRF koruması başarısız';
+                
+                status.className = 'message error-message';
+                countdown(5, () => window.location.href = '/');
+                return;
+            }
             
+            // Başarılı
+            localStorage.removeItem('oauth_state');
             localStorage.setItem('oauth_code', code);
             localStorage.setItem('oauth_timestamp', Date.now().toString());
+            
+            title.textContent = 'Giriş başarılı';
+            message.textContent = 'Yönlendiriliyorsunuz...';
             
             setTimeout(() => window.location.href = '/', 1000);
             
