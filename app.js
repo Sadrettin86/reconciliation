@@ -1051,8 +1051,6 @@ async function exchangeCodeForToken(code) {
         }
     }
 }
-    }
-}
 
 // Fetch user profile
 async function fetchUserProfile(accessToken) {
