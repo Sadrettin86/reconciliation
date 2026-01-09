@@ -2554,13 +2554,6 @@ async function addKEIDToWikidata(qid, keId) {
         const data = await response.json();
         console.log('✅ P11729 successfully added:', data);
         
-        // Update Firebase
-        await firebase.database().ref(`qidMatches/${keId}`).set({
-            qid: qid,
-            timestamp: Date.now(),
-            user: 'user'
-        });
-        
         return true;
         
     } catch (error) {
