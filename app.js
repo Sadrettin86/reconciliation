@@ -966,7 +966,7 @@ async function exchangeCodeForToken(code) {
         localStorage.removeItem('oauth_code_verifier');
         
         // Backend proxy - Cloudflare Worker
-        const PROXY_URL = 'https://keharita-oauth.ademozcna.workers.dev';
+        const PROXY_URL = 'https://keharita.toolforge.org';
         
         const response = await fetch(PROXY_URL, {
             method: 'POST',
