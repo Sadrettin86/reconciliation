@@ -522,10 +522,46 @@
             color: #95a5a6;
             font-size: 11px;
         }
+        
+        /* Merkezi Bildirim Kutusu */
+        #notification-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2ecc71;
+            color: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10002;
+            display: none;
+            text-align: center;
+            animation: fadeIn 0.3s ease-in;
+            max-width: 80vw;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+        
+        #notification-box.success {
+            background: #2ecc71;
+        }
+        
+        #notification-box.error {
+            background: #e74c3c;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    
+    <!-- Bildirim Kutusu -->
+    <div id="notification-box"></div>
     
     <div class="controls">
         <div>
