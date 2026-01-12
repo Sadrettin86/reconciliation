@@ -968,7 +968,7 @@ async function exchangeCodeForToken(code) {
         // Backend proxy - Cloudflare Worker
         const PROXY_URL = 'https://keharita.toolforge.org';
         
-        const response = await fetch(PROXY_URL, {
+        const response = await fetch(PROXY_URL + '/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2532,12 +2532,12 @@ async function addKEIDToWikidata(qid, keId) {
     try {
         console.log(`📝 Adding P11729: ${keId} to ${qid}`);
         
-        // Use Cloudflare Worker proxy
-        const PROXY_URL = 'https://keharita-oauth.ademozcna.workers.dev';
-        
-        const response = await fetch(PROXY_URL + '/add-claim', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+// Use Toolforge proxy
+const PROXY_URL = 'https://keharita.toolforge.org';
+
+const response = await fetch(PROXY_URL + '/add-claim', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 access_token: currentUser.accessToken,
                 qid: qid,
