@@ -2553,7 +2553,10 @@ const response = await fetch(PROXY_URL + '/add-claim', {
         
         const data = await response.json();
         console.log('✅ P11729 successfully added:', data);
-        
+        // Hata kontrolü ekle
+if (data.error) {
+    throw new Error(data.error.info || 'Wikidata error');
+}
         return true;
         
     } catch (error) {
