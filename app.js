@@ -2523,7 +2523,6 @@ document.addEventListener('DOMContentLoaded', initMap);
 
 // Add P11729 (Kültür Envanteri ID) to Wikidata item via Worker
 async function addKEIDToWikidata(qid, keId) {
-    // Check if user is logged in
     if (!currentUser || !currentUser.accessToken) {
         alert('Bu işlem için giriş yapmalısınız.');
         return false;
@@ -2531,6 +2530,71 @@ async function addKEIDToWikidata(qid, keId) {
     
     try {
         console.log(`📝 Adding P11729: ${keId} to ${qid}`);
+        
+        const PROXY_URL = 'https://keharita.toolforge.org';
+        
+        const response = await fetch(PROXY_URL + '/add-claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                access_token: currentUser.accessToken,
+                qid: qid,
+                property: 'P11729',
+                value: keId.toString()
+            })
+        });
+        
+        const data = await response.json();
+        console.log('✅ P11729 successfully added:', data);
+        
+        // Hata kontrolü
+        if (data.error) {
+            showNotification(`Hata: ${data.error.info}`, 'error');
+            throw new Error(data.error.info || 'Wikidata hatası');
+        }
+        
+        // Başarılı - QID label'ını al
+        const qidLabel = await getQIDLabel(qid);
+        const message = `${qidLabel} (${qid}) öğesine KE ID ${keId} eklendi.`;
+        
+        showNotification(message, 'success');
+        
+        // 1 saniye sonra en yakın unmatched marker'a geç
+        setTimeout(() => {
+            moveToNearestUnmatched();
+        }, 1000);
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Wikidata edit error:', error);
+        showNotification(`Hata: ${error.message}`, 'error');
+        throw error;
+    }
+}
+
+// QID label'ını al (cache ile)
+const qidLabelCache = {};
+
+async function getQIDLabel(qid) {
+    if (qidLabelCache[qid]) {
+        return qidLabelCache[qid];
+    }
+    
+    try {
+        const response = await fetch(`https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qid}&props=labels&languages=tr|en&format=json&origin=*`);
+        const data = await response.json();
+        
+        const entity = data.entities[qid];
+        const label = entity.labels.tr?.value || entity.labels.en?.value || qid;
+        
+        qidLabelCache[qid] = label;
+        return label;
+    } catch (error) {
+        console.error('Label fetch error:', error);
+        return qid;
+    }
+}
         
 // Use Toolforge proxy
 const PROXY_URL = 'https://keharita.toolforge.org';
@@ -2603,4 +2667,58 @@ loadNearbyQIDs(activeKEMarker.keItem.lat, activeKEMarker.keItem.lng, currentSear
 
 function closeWikidataModal() {
     document.getElementById('wikidataModal').classList.remove('active');
+}
+
+// Bildirim göster fonksiyonu
+function showNotification(message, type = 'success') {
+    const box = document.getElementById('notification-box');
+    if (!box) {
+        const newBox = document.createElement('div');
+        newBox.id = 'notification-box';
+        document.body.appendChild(newBox);
+    }
+    
+    const notificationBox = document.getElementById('notification-box');
+    notificationBox.textContent = message;
+    notificationBox.className = type;
+    notificationBox.style.display = 'block';
+    
+    setTimeout(() => {
+        notificationBox.style.display = 'none';
+    }, 1000);
+}
+
+// En yakın unmatched KE marker'a geç
+function moveToNearestUnmatched() {
+    // Mevcut marker'ı al
+    if (!selectedKEMarker) return;
+    
+    const currentLatLng = selectedKEMarker.getLatLng();
+    let nearestMarker = null;
+    let nearestDistance = Infinity;
+    
+    // Tüm unmatched marker'ları kontrol et
+    keMarkers.forEach(marker => {
+        const markerData = marker.options.keData;
+        
+        // QID'si olan (eşleşmiş) marker'ları atla
+        if (markerData.qids && markerData.qids.length > 0) return;
+        
+        // Mevcut marker'ı atla
+        if (marker === selectedKEMarker) return;
+        
+        // Mesafeyi hesapla
+        const distance = currentLatLng.distanceTo(marker.getLatLng());
+        
+        if (distance < nearestDistance) {
+            nearestDistance = distance;
+            nearestMarker = marker;
+        }
+    });
+    
+    // En yakın marker'a geç
+    if (nearestMarker) {
+        nearestMarker.fire('click');
+        map.setView(nearestMarker.getLatLng(), map.getZoom());
+    }
 }
