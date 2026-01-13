@@ -2637,22 +2637,79 @@ function closeWikidataModal() {
 }
 
 // Bildirim göster fonksiyonu
-function showNotification(message, type = 'success') {
-    const box = document.getElementById('notification-box');
-    if (!box) {
-        const newBox = document.createElement('div');
-        newBox.id = 'notification-box';
-        document.body.appendChild(newBox);
+function showNotification(message, type = 'success', duration = 3000) {
+    // Mevcut bildirimi kaldır
+    const existingBox = document.getElementById('notification-box');
+    if (existingBox) {
+        existingBox.remove();
     }
     
-    const notificationBox = document.getElementById('notification-box');
-    notificationBox.textContent = message;
-    notificationBox.className = type;
-    notificationBox.style.display = 'block';
+    // Yeni bildirim oluştur
+    const notificationBox = document.createElement('div');
+    notificationBox.id = 'notification-box';
+    notificationBox.className = `notification ${type}`;
     
+    // İkon seç
+    const icons = {
+        success: '✅',
+        error: '❌',
+        info: 'ℹ️',
+        warning: '⚠️'
+    };
+    const icon = icons[type] || icons.success;
+    
+    // İçerik oluştur
+    notificationBox.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 24px;">${icon}</span>
+            <span style="flex: 1;">${message}</span>
+        </div>
+        <button onclick="this.parentElement.remove()" 
+                style="background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 5px; opacity: 0.7; transition: opacity 0.2s;"
+                onmouseover="this.style.opacity='1'"
+                onmouseout="this.style.opacity='0.7'">×</button>
+    `;
+    
+    // Stil ayarla
+    notificationBox.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-20px);
+        background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : type === 'warning' ? '#f39c12' : '#3498db'};
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10001;
+        min-width: 300px;
+        max-width: 500px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0;
+        transition: all 0.3s ease-in-out;
+    `;
+    
+    document.body.appendChild(notificationBox);
+    
+    // Fade-in animasyonu
     setTimeout(() => {
-        notificationBox.style.display = 'none';
-    }, 1000);
+        notificationBox.style.opacity = '1';
+        notificationBox.style.transform = 'translateX(-50%) translateY(0)';
+    }, 10);
+    
+    // Otomatik kapat
+    setTimeout(() => {
+        notificationBox.style.opacity = '0';
+        notificationBox.style.transform = 'translateX(-50%) translateY(-20px)';
+        setTimeout(() => {
+            notificationBox.remove();
+        }, 300);
+    }, duration);
 }
 
 // En yakın unmatched KE marker'a geç
