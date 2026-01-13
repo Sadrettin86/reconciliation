@@ -2611,7 +2611,7 @@ function openAddKEModal(qid, keId) {
                 
                 // Refresh QID list
                 if (activeKEMarker) {
-loadNearbyQIDs(activeKEMarker.keItem.lat, activeKEMarker.keItem.lng, currentSearchRadius);
+                    loadNearbyQIDs(activeKEMarker.keItem.lat, activeKEMarker.keItem.lng, currentSearchRadius);
                 }
             })
             .catch(error => {
@@ -2657,25 +2657,25 @@ function showNotification(message, type = 'success') {
 
 // En yakın unmatched KE marker'a geç
 function moveToNearestUnmatched() {
-    // Mevcut marker'ı al
-    if (!selectedKEMarker) return;
+    if (!activeKEMarker) return;
     
-    const currentLatLng = selectedKEMarker.getLatLng();
+    const currentItem = activeKEMarker.keItem;
+    const currentLat = currentItem.lat;
+    const currentLng = currentItem.lng;
     let nearestMarker = null;
     let nearestDistance = Infinity;
     
     // Tüm unmatched marker'ları kontrol et
-    keMarkers.forEach(marker => {
-        const markerData = marker.options.keData;
+    keMarkers.eachLayer(marker => {
+        if (!marker.keItem) return;
         
         // QID'si olan (eşleşmiş) marker'ları atla
-        if (markerData.qids && markerData.qids.length > 0) return;
+        if (marker.keItem.matched || marker.keItem.newItem) return;
         
-        // Mevcut marker'ı atla
-        if (marker === selectedKEMarker) return;
+        if (marker === activeKEMarker) return;
         
         // Mesafeyi hesapla
-        const distance = currentLatLng.distanceTo(marker.getLatLng());
+        const distance = calculateDistance(currentLat, currentLng, marker.keItem.lat, marker.keItem.lng);
         
         if (distance < nearestDistance) {
             nearestDistance = distance;
@@ -2685,7 +2685,13 @@ function moveToNearestUnmatched() {
     
     // En yakın marker'a geç
     if (nearestMarker) {
-        nearestMarker.fire('click');
-        map.setView(nearestMarker.getLatLng(), map.getZoom());
+        map.setView([nearestMarker.keItem.lat, nearestMarker.keItem.lng], map.getZoom() < 16 ? 16 : map.getZoom(), {
+            animate: true,
+            duration: 0.5
+        });
+        
+        setTimeout(() => {
+            selectKEMarker(nearestMarker, nearestMarker.keItem);
+        }, 500);
     }
 }
