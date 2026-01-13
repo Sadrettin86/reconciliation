@@ -2595,39 +2595,6 @@ async function getQIDLabel(qid) {
         return qid;
     }
 }
-        
-// Use Toolforge proxy
-const PROXY_URL = 'https://keharita.toolforge.org';
-
-const response = await fetch(PROXY_URL + '/add-claim', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                access_token: currentUser.accessToken,
-                qid: qid,
-                property: 'P11729',
-                value: keId.toString()
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Unknown error');
-        }
-        
-        const data = await response.json();
-        console.log('✅ P11729 successfully added:', data);
-        // Hata kontrolü ekle
-if (data.error) {
-    throw new Error(data.error.info || 'Wikidata error');
-}
-        return true;
-        
-    } catch (error) {
-        console.error('❌ Wikidata edit error:', error);
-        throw error;
-    }
-}
 
 function openAddKEModal(qid, keId) {
     // Eğer giriş yapılmışsa, direkt Wikidata'ya ekle
