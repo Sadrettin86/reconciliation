@@ -1290,20 +1290,10 @@ function showCoordinatePanel(lat, lng) {
     panel.style.display = 'block';
     
     const isMobile = window.innerWidth <= 768;
-    const qidBottom = isMobile ? '15px' : '60px';
-    
-    // Google Maps footer (mobilde gizli)
-    const googleMapsFooter = isMobile ? '' : `
-        <div style="position: absolute; left: 15px; right: 15px; bottom: 15px; height: 35px; display: flex; align-items: center; justify-content: center; border-top: 1px solid #ecf0f1; padding-top: 8px;">
-            <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" style="display: flex; align-items: center; gap: 6px; color: #4285f4; text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background='transparent'">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                Google Maps'te Aç
-            </a>
-        </div>
-    `;
+// SONRA ✅
+const qidBottom = '15px'; // Desktop'ta da 15px
+
+const googleMapsFooter = ''; // Google Maps footer kaldırıldı
     
     let html = `
         <div id="panelHeader" style="position: relative; z-index: 1;">
