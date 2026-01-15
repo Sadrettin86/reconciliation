@@ -2645,26 +2645,14 @@ function showNotification(message, type = 'success', duration = 3000) {
     notificationBox.id = 'notification-box';
     notificationBox.className = `notification ${type}`;
     
-    // İkon seç
-    const icons = {
-        success: '✅',
-        error: '❌',
-        info: 'ℹ️',
-        warning: '⚠️'
-    };
-    const icon = icons[type] || icons.success;
-    
-    // İçerik oluştur
-    notificationBox.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 24px;">${icon}</span>
-            <span style="flex: 1;">${message}</span>
-        </div>
-        <button onclick="this.parentElement.remove()" 
-                style="background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 5px; opacity: 0.7; transition: opacity 0.2s;"
-                onmouseover="this.style.opacity='1'"
-                onmouseout="this.style.opacity='0.7'">×</button>
-    `;
+// İçerik oluştur (emoji yok)
+notificationBox.innerHTML = `
+    <span style="flex: 1;">${message}</span>
+    <button onclick="this.parentElement.remove()" 
+            style="background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 5px; opacity: 0.7; transition: opacity 0.2s;"
+            onmouseover="this.style.opacity='1'"
+            onmouseout="this.style.opacity='0.7'">×</button>
+`;
     
 // Stil ayarla
 notificationBox.style.cssText = `
