@@ -240,10 +240,10 @@ async function markAsNewItem(keId) {
     const item = keData.find(i => i.id === keId);
     if (!item) return;
     
-    // Kullanıcı al
-    const user = getCurrentUser();
-    if (!user) {
-        alert('❌ İşlem iptal edildi');
+    // Kullanıcı giriş kontrolü
+    if (!currentUser || !currentUser.accessToken) {
+        // Giriş yapılmamış - bilgi kutusu göster
+        showNotification('Bu işlem için lütfen giriş yapın.', 'warning', 4000);
         return;
     }
     
@@ -252,12 +252,45 @@ async function markAsNewItem(keId) {
         await database.ref('newItems/' + keId).set({
             keId: keId,
             timestamp: Date.now(),
-            userName: user.name,
-            userId: user.userId,
+            userName: currentUser.name, // currentUser kullan
+            userId: currentUser.userId,  // currentUser kullan
             name: item.name || '',
             city: item.city || '',
             district: item.district || ''
         });
+        
+        // Kullanıcı istatistiklerini güncelle
+        await updateUserStats('newItem');
+        
+        // Yerel güncelleme
+        item.newItem = true;
+        item.matched = false;
+        
+        // Marker'ı haritadan kaldır
+        const marker = keMarkers.getLayers().find(m => m.keItem && m.keItem.id === keId);
+        if (marker) {
+            marker.remove();
+        }
+        
+        // Sidebar'ı kapat
+        if (activeKEMarker) {
+            activeKEMarker = null;
+            document.getElementById('infoPanel').style.display = 'none';
+        }
+        
+        // En yakın eşleşmemiş KE'yi bul ve göster
+        showNearestUnmatched(item.lat, item.lng);
+        
+        displayKEData();
+        updateStats();
+        
+        console.log(`✅ KE ID ${keId} yeni öğe olarak eklendi!`);
+        
+    } catch (error) {
+        console.error('Firebase hatası:', error);
+        showNotification('Hata: ' + error.message, 'error');
+    }
+}
         
         // Kullanıcı istatistiklerini güncelle
         await updateUserStats('newItem');
