@@ -1775,15 +1775,6 @@ function selectKEMarker(marker, item) {
         
         map.setView(newCenter, zoomLevel, { animate: true, duration: 0.5 });
     }
-    
-    // Sağ paneli göster ve güncelle
-    showInfoPanel(item);
-    
-    // Yakındaki QID'leri yükle
-    loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
-    
-    console.log(`Selected KE ${item.id}`);
-}
 
 // Sağ paneli göster ve KE bilgilerini doldur
 function showInfoPanel(item) {
@@ -1829,49 +1820,6 @@ function showInfoPanel(item) {
         
         ${googleMapsFooter}
     `;
-    
-    panel.innerHTML = html;
-    
-    // Mobilde resize handle ekle
-    if (isMobile) {
-        addMobileResizeHandle();
-    }
-    
-    // Header yüksekliğini ölç ve QID container'ın top'unu ayarla
-    requestAnimationFrame(() => {
-        const header = document.getElementById('panelHeader');
-        const container = document.getElementById('qidListContainer');
-        if (header && container) {
-            const headerHeight = header.offsetHeight;
-            container.style.top = (headerHeight + 15) + 'px';
-        }
-        
-        // Yeni Öğe butonuna event listener ekle
-        const newItemButton = document.getElementById('newItemButton');
-        if (newItemButton) {
-            const keId = parseInt(newItemButton.getAttribute('data-ke-id'));
-            
-            // Touch event (mobil)
-            newItemButton.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                markAsNewItem(keId);
-            }, { passive: false });
-            
-            // Click event (desktop fallback)
-            newItemButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                markAsNewItem(keId);
-            });
-        }
-    });
-    
-    // Mobilde slider'ı göster
-    if (isMobile) {
-        showMobileSlider();
-    }
-}
     
     panel.innerHTML = html;
     
