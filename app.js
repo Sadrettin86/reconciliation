@@ -2666,29 +2666,29 @@ function showNotification(message, type = 'success', duration = 3000) {
                 onmouseout="this.style.opacity='0.7'">×</button>
     `;
     
-    // Stil ayarla
-    notificationBox.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%) translateY(-20px);
-        background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : type === 'warning' ? '#f39c12' : '#3498db'};
-        color: white;
-        padding: 15px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 10001;
-        min-width: 300px;
-        max-width: 500px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        font-size: 14px;
-        font-weight: 500;
-        opacity: 0;
-        transition: all 0.3s ease-in-out;
-    `;
+// Stil ayarla
+notificationBox.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : type === 'warning' ? '#f39c12' : '#3498db'};
+    color: white;
+    padding: 20px 25px;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    z-index: 10001;
+    min-width: 350px;
+    max-width: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s ease-in-out;
+`;
     
     document.body.appendChild(notificationBox);
     
