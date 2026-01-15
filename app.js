@@ -291,39 +291,6 @@ async function markAsNewItem(keId) {
         showNotification('Hata: ' + error.message, 'error');
     }
 }
-        
-        // Kullanıcı istatistiklerini güncelle
-        await updateUserStats('newItem');
-        
-        // Yerel güncelleme
-        item.newItem = true;
-        item.matched = false;
-        
-        // Marker'ı haritadan kaldır
-        const marker = keMarkers.getLayers().find(m => m.keItem && m.keItem.id === keId);
-        if (marker) {
-            marker.remove();
-        }
-        
-        // Sidebar'ı kapat
-        if (activeKEMarker) {
-            activeKEMarker = null;
-            document.getElementById('infoPanel').style.display = 'none';
-        }
-        
-        // En yakın eşleşmemiş KE'yi bul ve göster
-        showNearestUnmatched(item.lat, item.lng);
-        
-        displayKEData();
-        updateStats();
-        
-        console.log(`✅ KE ID ${keId} yeni öğe olarak eklendi!`);
-        
-    } catch (error) {
-        console.error('Firebase hatası:', error);
-        alert('❌ Eklenemedi: ' + error.message);
-    }
-}
 
 // En yakın eşleşmemiş KE'yi bul ve göster
 function showNearestUnmatched(fromLat, fromLng) {
@@ -1819,21 +1786,6 @@ function selectKEMarker(marker, item) {
 }
 
 // Sağ paneli göster ve KE bilgilerini doldur
-function showInfoPanel(item) {
-    const panel = document.getElementById('infoPanel');
-    if (!panel) return;
-    
-    panel.style.display = 'block';
-    
-    // Mobil grid layout için
-    const isMobile = window.innerWidth <= 768;
-    const gridStyle = isMobile ? 'display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; font-size: 11px;' : 'font-size: 13px;';
-    
-// Google Maps footer kaldırıldı
-const googleMapsFooter = '';
-
-// QID container bottom
-const qidBottom = '15px';
     
     // Kompakt bilgi satırı - sadece önemli olanlar
     const infoLine = [
