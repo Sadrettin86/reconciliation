@@ -2701,7 +2701,9 @@ function moveToNearestUnmatched() {
         
         setTimeout(() => {
             selectKEMarker(nearestMarker, nearestMarker.keItem);
-        }, 500);
+}, 500);
     }
-}
-}
+}  // moveToNearestUnmatched fonksiyonu
+
+    }  // showInfoPanel fonksiyonu kapanışı
+}      // displayQIDList fonksiyonu kapanışı
