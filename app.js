@@ -2597,39 +2597,35 @@ async function getQIDLabel(qid) {
 }
 
 function openAddKEModal(qid, keId) {
-    // Eğer giriş yapılmışsa, direkt Wikidata'ya ekle
-    if (currentUser && currentUser.accessToken) {
-        // Loading state
-        const button = event.target;
-        const originalText = button.innerHTML;
-        button.innerHTML = '⏳';
-        button.style.pointerEvents = 'none';
-        
-        addKEIDToWikidata(qid, keId)
-            .then(() => {
-                alert('Eklendi!');
-                
-                // Refresh QID list
-                if (activeKEMarker) {
-                    loadNearbyQIDs(activeKEMarker.keItem.lat, activeKEMarker.keItem.lng, currentSearchRadius);
-                }
-            })
-            .catch(error => {
-                alert('Hata: ' + error.message);
-            })
-            .finally(() => {
-                button.innerHTML = originalText;
-                button.style.pointerEvents = 'auto';
-            });
-    } else {
-        // Giriş yapılmamış - modal göster
-        document.getElementById('modalKeValue').textContent = keId;
-        document.getElementById('openWikidataBtn').onclick = function() {
-            window.open(`https://www.wikidata.org/wiki/${qid}`, '_blank');
-            closeWikidataModal();
-        };
-        document.getElementById('wikidataModal').classList.add('active');
+    // Kullanıcı giriş kontrolü
+    if (!currentUser || !currentUser.accessToken) {
+        // Giriş yapılmamış - bilgi kutusu göster
+        showNotification('Bu işlem için lütfen giriş yapın.', 'warning', 4000);
+        return; // Fonksiyonu sonlandır
     }
+    
+    // Giriş yapılmış - Loading state
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '⏳';
+    button.style.pointerEvents = 'none';
+    
+    addKEIDToWikidata(qid, keId)
+        .then(() => {
+            // Başarılı mesaj zaten addKEIDToWikidata içinde gösteriliyor
+            
+            // Refresh QID list
+            if (activeKEMarker) {
+                loadNearbyQIDs(activeKEMarker.keItem.lat, activeKEMarker.keItem.lng, currentSearchRadius);
+            }
+        })
+        .catch(error => {
+            showNotification('Hata: ' + error.message, 'error');
+        })
+        .finally(() => {
+            button.innerHTML = originalText;
+            button.style.pointerEvents = 'auto';
+        });
 }
 
 function closeWikidataModal() {
