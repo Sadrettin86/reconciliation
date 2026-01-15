@@ -1796,21 +1796,11 @@ function showInfoPanel(item) {
     const isMobile = window.innerWidth <= 768;
     const gridStyle = isMobile ? 'display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; font-size: 11px;' : 'font-size: 13px;';
     
-    // Google Maps footer (mobilde gizli)
-    const googleMapsFooter = isMobile ? '' : `
-        <div style="position: absolute; left: 15px; right: 15px; bottom: 15px; height: 35px; display: flex; align-items: center; justify-content: center; border-top: 1px solid #ecf0f1; padding-top: 8px;">
-            <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" style="display: flex; align-items: center; gap: 6px; color: #4285f4; text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background='transparent'">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                Google Maps'te Aç
-            </a>
-        </div>
-    `;
-    
-    // QID container bottom (mobilde 15px, desktop'ta 60px - footer yüksekliği)
-    const qidBottom = isMobile ? '15px' : '60px';
+// Google Maps footer kaldırıldı
+const googleMapsFooter = '';
+
+// QID container bottom
+const qidBottom = '15px';
     
     // Kompakt bilgi satırı - sadece önemli olanlar
     const infoLine = [
