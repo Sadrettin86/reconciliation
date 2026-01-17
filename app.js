@@ -1775,6 +1775,13 @@ function selectKEMarker(marker, item) {
         
         map.setView(newCenter, zoomLevel, { animate: true, duration: 0.5 });
     }
+    
+    // Sağ paneli göster ve KE bilgilerini doldur
+    showInfoPanel(item);
+    
+    // Yakındaki QID'leri yükle
+    loadNearbyQIDs(item.lat, item.lng, currentSearchRadius);
+}
 
 // Sağ paneli göster ve KE bilgilerini doldur
 function showInfoPanel(item) {
@@ -1785,7 +1792,6 @@ function showInfoPanel(item) {
     
     const isMobile = window.innerWidth <= 768;
     
-    // SONRA ✅
     const qidBottom = '15px'; // Desktop'ta da 15px
     
     const googleMapsFooter = ''; // Google Maps footer kaldırıldı
@@ -2701,7 +2707,6 @@ function moveToNearestUnmatched() {
         
         setTimeout(() => {
             selectKEMarker(nearestMarker, nearestMarker.keItem);
-}, 500);
+        }, 500);
     }
-}
 }
