@@ -2606,7 +2606,7 @@ function closeWikidataModal() {
     document.getElementById('wikidataModal').classList.remove('active');
 }
 
-// Bildirim göster fonksiyonu
+// Bildirim göster fonksiyonu - DÜZELTİLMİŞ
 function showNotification(message, type = 'success', duration = 3000) {
     // Mevcut bildirimi kaldır
     const existingBox = document.getElementById('notification-box');
@@ -2619,55 +2619,93 @@ function showNotification(message, type = 'success', duration = 3000) {
     notificationBox.id = 'notification-box';
     notificationBox.className = `notification ${type}`;
     
-// İçerik oluştur (emoji yok)
-notificationBox.innerHTML = `
-    <span style="flex: 1;">${message}</span>
-    <button onclick="this.parentElement.remove()" 
-            style="background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 5px; opacity: 0.7; transition: opacity 0.2s;"
-            onmouseover="this.style.opacity='1'"
-            onmouseout="this.style.opacity='0.7'">×</button>
-`;
+    // İçerik oluştur (emoji yok)
+    notificationBox.innerHTML = `
+        <span style="flex: 1;">${message}</span>
+        <button onclick="this.parentElement.remove()" 
+                style="background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 5px; opacity: 0.7; transition: opacity 0.2s;"
+                onmouseover="this.style.opacity='1'"
+                onmouseout="this.style.opacity='0.7'">×</button>
+    `;
     
-// Stil ayarla
-notificationBox.style.cssText = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.9);
-    background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : type === 'warning' ? '#f39c12' : '#3498db'};
-    color: white;
-    padding: 20px 25px;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    z-index: 10001;
-    min-width: 350px;
-    max-width: 500px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 15px;
-    font-weight: 500;
-    opacity: 0;
-    transition: all 0.3s ease-in-out;
-`;
+    // Stil ayarla
+    notificationBox.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : type === 'warning' ? '#f39c12' : '#3498db'};
+        color: white;
+        padding: 20px 25px;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        z-index: 10001;
+        min-width: 350px;
+        max-width: 500px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 15px;
+        font-weight: 500;
+        opacity: 0;
+        transition: all 0.3s ease-in-out;
+    `;
     
     document.body.appendChild(notificationBox);
     
     // Fade-in animasyonu
     setTimeout(() => {
         notificationBox.style.opacity = '1';
-        notificationBox.style.transform = 'translateX(-50%) translateY(0)';
+        notificationBox.style.transform = 'translate(-50%, -50%) scale(1)'; // ✅ DÜZELTME
     }, 10);
     
     // Otomatik kapat
     setTimeout(() => {
         notificationBox.style.opacity = '0';
-        notificationBox.style.transform = 'translateX(-50%) translateY(-20px)';
+        notificationBox.style.transform = 'translate(-50%, -50%) scale(0.9)'; // ✅ DÜZELTME
         setTimeout(() => {
             notificationBox.remove();
         }, 300);
     }, duration);
+}
+
+// openAddKEModal - DÜZELTİLMİŞ
+function openAddKEModal(qid, keId, event) { // ✅ event parametresi eklendi
+    // Kullanıcı giriş kontrolü
+    if (!currentUser || !currentUser.accessToken) {
+        // Giriş yapılmamış - bilgi kutusu göster
+        showNotification('Bu işlem için lütfen giriş yapın.', 'warning', 4000);
+        return; // Fonksiyonu sonlandır
+    }
+    
+    // Giriş yapılmış - Loading state
+    const button = event ? event.target : null; // ✅ event kontrolü
+    const originalText = button ? button.innerHTML : '';
+    
+    if (button) {
+        button.innerHTML = '⏳';
+        button.style.pointerEvents = 'none';
+    }
+    
+    addKEIDToWikidata(qid, keId)
+        .then(() => {
+            // Başarılı mesaj zaten addKEIDToWikidata içinde gösteriliyor
+            
+            // Refresh QID list
+            if (activeKEMarker) {
+                loadNearbyQIDs(activeKEMarker.keItem.lat, activeKEMarker.keItem.lng, currentSearchRadius);
+            }
+        })
+        .catch(error => {
+            showNotification('Hata: ' + error.message, 'error');
+        })
+        .finally(() => {
+            if (button) {
+                button.innerHTML = originalText;
+                button.style.pointerEvents = 'auto';
+            }
+        });
 }
 
 // En yakın unmatched KE marker'a geç
