@@ -1068,16 +1068,48 @@ async function exchangeCodeForToken(code) {
 // Fetch user profile via Cloudflare Worker (CORS fix)
 async function fetchUserProfile(accessToken) {
     try {
-        // Proxy üzerinden kullanıcı bilgisi al
-        const PROXY_URL = 'https://keharita.toolforge.org';
+        console.log('🔐 Fetching user profile directly from Wikimedia...');
         
-        try {
-            const response = await fetch(PROXY_URL + '/userinfo', {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + accessToken
-                }
-            });
+        // Direct call to Wikimedia OAuth2 profile endpoint (no backend proxy)
+        const response = await fetch('https://meta.wikimedia.org/w/rest.php/oauth2/resource/profile', {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + accessToken
+            }
+        });
+        
+        if (!response.ok) {
+            console.error('❌ Failed to fetch user info:', response.status);
+            throw new Error('Failed to fetch user profile');
+        }
+        
+        const userInfo = await response.json();
+        console.log('✅ User info received:', userInfo);
+        
+        const wikiUsername = userInfo.username || 'Wikimedia Kullanıcısı';
+        
+        return {
+            name: wikiUsername,
+            userId: 'user_' + wikiUsername.replace(/\s/g, '_').toLowerCase() + '_' + Date.now().toString().slice(-6),
+            username: wikiUsername,
+            sub: userInfo.sub,
+            accessToken: accessToken
+        };
+        
+    } catch (error) {
+        console.error('❌ Failed to fetch user profile:', error);
+        
+        // Fallback
+        const timestamp = Date.now();
+        return {
+            name: 'Wikimedia Kullanıcısı',
+            userId: 'user_' + timestamp,
+            username: 'Wikimedia Kullanıcısı',
+            sub: 'unknown',
+            accessToken: accessToken
+        };
+    }
+}
             
             if (response.ok) {
                 const userInfo = await response.json();
