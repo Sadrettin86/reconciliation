@@ -1068,10 +1068,11 @@ async function exchangeCodeForToken(code) {
 // Fetch user profile via Cloudflare Worker (CORS fix)
 async function fetchUserProfile(accessToken) {
     try {
-        console.log('🔐 Fetching user profile directly from Wikimedia...');
+        console.log('🔐 Fetching user profile via backend proxy...');
         
-        // Direct call to Wikimedia OAuth2 profile endpoint (no backend proxy)
-        const response = await fetch('https://meta.wikimedia.org/w/rest.php/oauth2/resource/profile', {
+        const PROXY_URL = 'https://keharita.toolforge.org';
+        
+        const response = await fetch(PROXY_URL + '/userinfo', {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + accessToken
@@ -1110,7 +1111,6 @@ async function fetchUserProfile(accessToken) {
         };
     }
 }
-
 // Update login button based on user state
 function updateLoginButton() {
     const loginButton = document.getElementById('loginButton');
