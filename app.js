@@ -2565,18 +2565,18 @@ async function addKEIDToWikidata(qid, keId) {
             throw new Error(data.error.info || 'Wikidata hatası');
         }
         
-        // Başarılı - QID label'ını al
-        const qidLabel = await getQIDLabel(qid);
-        const message = `${qidLabel} (${qid}) öğesine KE ID ${keId} eklendi.`;
-        
-        showNotification(message, 'success');
-        
-        // 1 saniye sonra en yakın unmatched marker'a geç
-        setTimeout(() => {
-            moveToNearestUnmatched();
-        }, 1000);
-        
-        return true;
+// ✅ Firebase'e eşleştirmeyi kaydet (marker'ı da kaldırır)
+await saveMatch(keId, qid);
+
+// Başarılı - QID label'ını al
+const qidLabel = await getQIDLabel(qid);
+const message = `${qidLabel} (${qid}) öğesine KE ID ${keId} eklendi.`;
+
+showNotification(message, 'success');
+
+// saveMatch() zaten en yakın marker'a geçiyor, tekrar çağırmaya gerek yok
+
+return true;
         
     } catch (error) {
         console.error('❌ Wikidata edit error:', error);
