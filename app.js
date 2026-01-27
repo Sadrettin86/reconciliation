@@ -1110,45 +1110,6 @@ async function fetchUserProfile(accessToken) {
         };
     }
 }
-            
-            if (response.ok) {
-                const userInfo = await response.json();
-                console.log('✅ User info received:', userInfo);
-                
-                // Wikimedia kullanıcı adını al
-                const wikiUsername = userInfo.username || userInfo.name || 'Kullanıcı';
-                
-                return {
-                    name: wikiUsername,  // ✅ Firebase için (markAsNewItem ve saveMatch kullanıyor)
-                    userId: 'user_' + wikiUsername.replace(/\s/g, '_').toLowerCase() + '_' + Date.now().toString().slice(-6),  // ✅ Firebase için
-                    username: wikiUsername,  // OAuth bilgisi
-                    sub: userInfo.sub || 'unknown',
-                    accessToken: accessToken
-                };
-            } else {
-                console.error('❌ Failed to fetch user info:', response.status);
-            }
-        } catch (fetchError) {
-            console.error('❌ Fetch error:', fetchError);
-        }
-        
-        // Fallback - userinfo alınamazsa dummy değerlerle devam et
-        const timestamp = Date.now();
-        const fallbackName = 'Kullanıcı_' + timestamp.toString().slice(-6);
-        
-        return {
-            name: fallbackName,  // ✅ Firebase için
-            userId: 'user_' + timestamp,  // ✅ Firebase için
-            username: fallbackName,
-            sub: 'unknown',
-            accessToken: accessToken
-        };
-        
-    } catch (error) {
-        console.error('❌ Failed to create user profile:', error);
-        return null;
-    }
-}
 
 // Update login button based on user state
 function updateLoginButton() {
