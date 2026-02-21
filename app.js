@@ -1835,11 +1835,11 @@ let html = `
             ${item.name || 'İsimsiz'}
         </h2>
         <div style="margin: 0 0 8px 0; font-size: 12px; color: #555; line-height: 1.8;">
-            ${item.type ? `<span><strong>Tür:</strong> ${item.type}</span><br>` : ''}
-            ${item.city ? `<span><strong>İl:</strong> ${item.city}</span>` : ''}
-            ${item.district ? ` • <span><strong>İlçe:</strong> ${item.district}</span>` : ''}
-            ${item.mahalle ? ` • <span><strong>Mahalle:</strong> ${item.mahalle}</span>` : ''}<br>
-            ${item.access ? `<span><strong>Erişim:</strong> ${item.access}</span>` : ''}
+${item.type ? `<span>Tür: <strong>${item.type}</strong></span><br>` : ''}
+${item.city ? `<span>İl: <strong>${item.city}</strong></span>` : ''}
+${item.district ? ` • <span>İlçe: <strong>${item.district}</strong></span>` : ''}
+${item.mahalle ? ` • <span>Mahalle: <strong>${item.mahalle}</strong></span>` : ''}<br>
+${item.access ? `<span>Erişim: <strong>${item.access}</strong></span>` : ''}
         </div>
             
             <button id="newItemButton" data-ke-id="${item.id}"
