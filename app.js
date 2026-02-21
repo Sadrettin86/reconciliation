@@ -76,11 +76,6 @@ function initMap() {
         tapTolerance: 15        // Dokunma toleransı
     }).setView([savedLat, savedLng], savedZoom);
     
-    // Zoom kontrolü ekle (pozisyon belirterek)
-    L.control.zoom({
-        position: zoomControlPosition
-    }).addTo(map);
-    
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap contributors © CARTO',
         subdomains: 'abcd',
