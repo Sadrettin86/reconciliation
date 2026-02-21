@@ -1086,7 +1086,8 @@ async function fetchUserProfile(accessToken) {
         
         const userInfo = await response.json();
         console.log('✅ User info received:', userInfo);
-        
+        console.log('🔍 username field:', userInfo.username); // BU SATIRI EKLE
+console.log('🔍 Tüm alanlar:', Object.keys(userInfo)); // BU SATIRI EKLE
         const wikiUsername = userInfo.username || 'Wikimedia Kullanıcısı';
         
         return {
