@@ -135,7 +135,10 @@ function initMap() {
 // Mobilde zoom butonlarını yukarı taşı
 if (isMobile) {
     const style = document.createElement('style');
-    style.textContent = '.leaflet-bottom.leaflet-right { margin-bottom: 80px; margin-right: 10px; }';
+    style.textContent = `
+        .leaflet-bottom.leaflet-right { margin-bottom: 80px; margin-right: 10px; }
+        .leaflet-control-attribution { font-size: 8px; opacity: 0.5; }
+    `;
     document.head.appendChild(style);
 }
 }
