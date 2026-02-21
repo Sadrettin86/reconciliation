@@ -57,29 +57,6 @@
             bottom: 10px !important;
         }
         
-        @media (max-width: 768px) {
-            .info-panel {
-                top: 0;
-                right: 0;
-                left: 0;
-                bottom: auto;
-                width: 100%;
-                height: 50vh;
-                max-height: 90vh;
-                min-height: 20vh;
-                border-radius: 0 0 16px 16px;
-                resize: none;
-                overflow: hidden;
-                z-index: 1001;
-                touch-action: none;
-            }
-            
-            /* Leaflet attribution - mobile'da sağda */
-            .leaflet-bottom.leaflet-right {
-                right: 10px !important;
-            }
-        }
-        
         .info-panel h3 {
             margin-bottom: 10px;
             color: #2c3e50;
@@ -135,28 +112,70 @@
             z-index: 1000;
         }
         
-        @media (max-width: 768px) {
-            .legend {
-                display: none !important;
-            }
-            .stats-panel {
-                display: none !important;
-            }
-            .controls {
-                display: none !important;
-            }
-            #map {
-                height: 100vh !important;
-            }
+        /* İstatistik Paneli */
+        .stats-panel {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-top: 2px;
         }
         
         .mobile-radius-slider {
             display: none;
         }
         
+        /* ===== MOBİL MEDYA SORGUSU ===== */
         @media (max-width: 768px) {
-                .legend { display: none !important; }
-    .controls { display: none !important; }
+            .legend { display: none !important; }
+            .controls { display: none !important; }
+            #map { height: 100vh !important; }
+            
+            .info-panel {
+                top: 0;
+                right: 0;
+                left: 0;
+                bottom: auto;
+                width: 100%;
+                height: 50vh;
+                max-height: 90vh;
+                min-height: 20vh;
+                border-radius: 0 0 16px 16px;
+                resize: none;
+                overflow: hidden;
+                z-index: 1001;
+                touch-action: none;
+            }
+            
+            .leaflet-bottom.leaflet-right {
+                right: 10px !important;
+            }
+            
             .mobile-radius-slider {
                 display: block;
                 position: fixed;
@@ -166,6 +185,36 @@
                 background: white;
                 padding: 6px 10px;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+                z-index: 1002;
+            }
+            
+            #wikidataSearchContainer {
+                position: fixed !important;
+                top: 42px !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                padding: 4px 8px !important;
+                background: white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                z-index: 1001;
+                box-sizing: border-box;
+            }
+            
+            .stats-panel {
+                display: flex !important;
+                position: fixed !important;
+                top: 88px !important;
+                left: 0 !important;
+                right: 0 !important;
+                transform: none !important;
+                width: 100% !important;
+                border-radius: 0 !important;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 6px 10px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 z-index: 1000;
             }
         }
@@ -353,40 +402,6 @@
         
         .modal-button.secondary:hover {
             background: #d0d0d0;
-        }
-        
-        /* İstatistik Paneli */
-        .stats-panel {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 1000;
-            display: flex;
-            gap: 20px;
-            font-size: 13px;
-        }
-        
-        .stat-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .stat-value {
-            font-size: 18px;
-            font-weight: 700;
-            color: #2c3e50;
-        }
-        
-        .stat-label {
-            font-size: 11px;
-            color: #7f8c8d;
-            margin-top: 2px;
         }
         
         /* Yapılanlar Modal */
@@ -597,7 +612,7 @@
     </div>
     
     <!-- Wikidata Arama Kutusu -->
-    <div style="position: absolute; top: 10px; right: 10px; z-index: 1000; width: 380px;" id="wikidataSearchContainer">
+    <div id="wikidataSearchContainer" style="position: absolute; top: 10px; right: 10px; z-index: 1000; width: 380px;">
         <div style="position: relative;">
             <input type="text" 
                    id="wikidataSearch" 
