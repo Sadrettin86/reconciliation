@@ -1100,17 +1100,8 @@ console.log('🔍 Tüm alanlar:', Object.keys(userInfo)); // BU SATIRI EKLE
         
     } catch (error) {
         console.error('❌ Failed to fetch user profile:', error);
-        
-        // Fallback
-        const timestamp = Date.now();
-        return {
-            name: 'Wikimedia Kullanıcısı',
-            userId: 'user_' + timestamp,
-            username: 'Wikimedia Kullanıcısı',
-            sub: 'unknown',
-            accessToken: accessToken
-        };
     }
+        return null;
 }
 // Update login button based on user state
 function updateLoginButton() {
