@@ -1577,8 +1577,8 @@ async function showActivities() {
             activities.slice(0, 10).forEach(activity => {
                 const icon = activity.type === 'match' ? '→' : '+';
                 const action = activity.type === 'match' 
-                    ? `KE ${activity.keId} → ${activity.qid}` 
-                    : `KE ${activity.keId} yeni öğe`;
+    ? `KE ${activity.keId} (${activity.name || ''}) → ${activity.qid}` 
+    : `KE ${activity.keId} (${activity.name || ''}) yeni öğe`;
                 const timeAgo = getTimeAgo(activity.timestamp);
                 
                 html += `
