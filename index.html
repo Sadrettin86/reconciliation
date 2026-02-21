@@ -201,22 +201,28 @@
                 box-sizing: border-box;
             }
             
-            .stats-panel {
-                display: flex !important;
-                position: fixed !important;
-                top: 88px !important;
-                left: 0 !important;
-                right: 0 !important;
-                transform: none !important;
-                width: 100% !important;
-                border-radius: 0 !important;
-                justify-content: center;
-                flex-wrap: wrap;
-                gap: 8px;
-                padding: 6px 10px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                z-index: 1000;
-            }
+.stats-panel {
+    display: flex !important;
+    position: fixed !important;
+    top: 88px !important;
+    left: 0 !important;
+    right: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.stats-panel .stat-item:nth-child(5),
+.stats-panel .stat-item:nth-child(6) {
+    flex-basis: 45%;
+    justify-content: center;
+}
         }
         
         .legend-item {
