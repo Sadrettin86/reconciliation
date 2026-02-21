@@ -1097,7 +1097,7 @@ console.log('🔍 Tüm alanlar:', Object.keys(userInfo)); // BU SATIRI EKLE
         
         return {
             name: wikiUsername,
-userId: 'user_' + wikiUsername.replace(/\s/g, '_').toLowerCase(),
+userId: wikiUsername,
             username: wikiUsername,
             sub: userInfo.sub,
             accessToken: accessToken
