@@ -135,8 +135,15 @@ function initMap() {
     if (window.innerWidth <= 768) {
         showMobileSlider();
     }
-}
 
+
+// Mobilde zoom butonlarını yukarı taşı
+if (isMobile) {
+    const style = document.createElement('style');
+    style.textContent = '.leaflet-bottom.leaflet-right { margin-bottom: 80px; margin-right: 10px; }';
+    document.head.appendChild(style);
+}
+}
 // Sidebar ve yarıçapı kapat
 function closeSidebar() {
     const panel = document.getElementById('infoPanel');
