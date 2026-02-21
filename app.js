@@ -1825,22 +1825,22 @@ function showInfoPanel(item) {
     const googleMapsFooter = ''; // Google Maps footer kaldırıldı
     
     // Kompakt bilgi satırı - sadece önemli olanlar
-    const infoLine = [
-        item.mahalle ? `Mahalle: ${item.mahalle}` : null,
-        item.type ? `Türler: ${item.type}` : null,
-        item.access ? `Erişim: ${item.access}` : null
-    ].filter(Boolean).join(' • ');
-    
-    let html = `
-        <div id="panelHeader" style="position: relative; z-index: 1;">
-            <h2 style="cursor: pointer; color: #2c3e50; font-size: ${isMobile ? '14px' : '15px'}; margin: 0 0 6px 0; transition: all 0.2s; border-bottom: 2px solid transparent; line-height: 1.3;" 
-                onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" 
-                onmouseover="this.style.color='#3498db'; this.style.borderBottomColor='#3498db';" 
-                onmouseout="this.style.color='#2c3e50'; this.style.borderBottomColor='transparent';"
-                title="Kültür Envanteri'nde açmak için tıklayın 🔗">
-                ${item.name || 'İsimsiz'}
-            </h2>
-            ${infoLine ? `<p style="margin: 0 0 8px 0; font-size: 11px; color: #7f8c8d;">${infoLine}</p>` : ''}
+let html = `
+    <div id="panelHeader" style="position: relative; z-index: 1;">
+        <h2 style="cursor: pointer; color: #2c3e50; font-size: ${isMobile ? '16px' : '17px'}; margin: 0 0 6px 0; transition: all 0.2s; border-bottom: 2px solid transparent; line-height: 1.3; font-weight: 700;" 
+            onclick="window.open('https://kulturenvanteri.com/yer/?p=${item.id}', '_blank')" 
+            onmouseover="this.style.color='#3498db'; this.style.borderBottomColor='#3498db';" 
+            onmouseout="this.style.color='#2c3e50'; this.style.borderBottomColor='transparent';"
+            title="Kültür Envanteri'nde açmak için tıklayın 🔗">
+            ${item.name || 'İsimsiz'}
+        </h2>
+        <div style="margin: 0 0 8px 0; font-size: 12px; color: #555; line-height: 1.8;">
+            ${item.type ? `<span><strong>Tür:</strong> ${item.type}</span><br>` : ''}
+            ${item.city ? `<span><strong>İl:</strong> ${item.city}</span>` : ''}
+            ${item.district ? ` • <span><strong>İlçe:</strong> ${item.district}</span>` : ''}
+            ${item.mahalle ? ` • <span><strong>Mahalle:</strong> ${item.mahalle}</span>` : ''}<br>
+            ${item.access ? `<span><strong>Erişim:</strong> ${item.access}</span>` : ''}
+        </div>
             
             <button id="newItemButton" data-ke-id="${item.id}"
                     style="width: 100%; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; margin-bottom: 8px; touch-action: manipulation;">
