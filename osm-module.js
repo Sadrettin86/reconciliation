@@ -73,7 +73,7 @@ const OSM_MODULE = (() => {
               <polyline points="10 17 15 12 10 7"></polyline>
               <line x1="15" y1="12" x2="3" y2="12"></line>
             </svg>
-            wikimedia:${currentUser.username}`;
+            Wikimedia:${currentUser.username}`;
         }
       }
     }, 1000);
