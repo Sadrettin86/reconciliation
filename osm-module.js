@@ -8,12 +8,14 @@
 const OSM_MODULE = (() => {
 
   // ── Durum ────────────────────────────────────────────────────
-  let _activeKEItem    = null;   // şu anda seçili KE noktası
-  let _activeQID       = null;   // eşleştirilmiş Wikidata QID
-  let _selectedOSMEl   = null;   // kullanıcının seçtiği OSM elemanı
-  let _wikidataToken   = null;   // Wikimedia access token (app.js'den alınır)
-  let _overpassCache   = {};     // {cacheKey: {ts, results}}
-  const CACHE_TTL_MS   = 5 * 60 * 1000; // 5 dakika
+  let _activeKEItem    = null;
+  let _activeQID       = null;
+  let _selectedOSMEl   = null;
+  let _wikidataToken   = null;
+  let _overpassCache   = {};
+  let _osmMissingLayer = null;   // OSM eksik QID marker katmanı
+  let _osmMissingMode  = false;  // mod aktif mi
+  const CACHE_TTL_MS   = 5 * 60 * 1000;
 
   // ── app.js Fonksiyonlarını Sar ────────────────────────────────
   // app.js tamamen yüklendikten sonra çalışır
@@ -59,7 +61,10 @@ const OSM_MODULE = (() => {
       };
     }
 
-    // 3) Wikimedia token'ı yakala + login butonuna kullanıcı adı yaz
+    // 3) Buton enjekte et
+    _injectOSMMissingButton();
+
+    // 4) Wikimedia token'ı yakala + login butonuna kullanıcı adı yaz
     setInterval(() => {
       if (typeof currentUser !== 'undefined' && currentUser?.accessToken) {
         _wikidataToken = currentUser.accessToken;
@@ -507,6 +512,125 @@ const OSM_MODULE = (() => {
     }
   }
 
+  // ── OSM Eksik QID Modu ────────────────────────────────────────
+  async function toggleOSMMissingMode() {
+    const btn = document.getElementById('osmMissingBtn');
+    if (_osmMissingMode) {
+      // Modu kapat
+      _osmMissingMode = false;
+      if (_osmMissingLayer) { map.removeLayer(_osmMissingLayer); _osmMissingLayer = null; }
+      if (btn) { btn.textContent = 'OSM Eksik QID'; btn.style.background = 'linear-gradient(135deg,#8e44ad,#6c3483)'; }
+      return;
+    }
+
+    // Modu aç
+    _osmMissingMode = true;
+    if (btn) { btn.textContent = '⏳ Yükleniyor…'; btn.disabled = true; }
+
+    try {
+      const items = await _fetchOSMMissingQIDs();
+      _renderOSMMissingLayer(items);
+      if (btn) {
+        btn.textContent = `OSM Eksik (${items.length})`;
+        btn.style.background = 'linear-gradient(135deg,#c0392b,#a93226)';
+        btn.disabled = false;
+      }
+    } catch (e) {
+      _osmMissingMode = false;
+      if (btn) { btn.textContent = 'OSM Eksik QID'; btn.disabled = false; }
+      _showNotification('SPARQL hatası: ' + e.message, 'error');
+    }
+  }
+
+  async function _fetchOSMMissingQIDs() {
+    const sparql = `
+SELECT ?place ?placeLabel ?coordinates WHERE {
+  ?place wdt:P11729 ?keID.
+  ?place wdt:P625 ?coordinates.
+  FILTER NOT EXISTS { ?place wdt:P10689 ?w. }
+  FILTER NOT EXISTS { ?place wdt:P402  ?r. }
+  FILTER NOT EXISTS { ?place wdt:P11693 ?n. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "tr,en". }
+}`.trim();
+
+    const url = 'https://query.wikidata.org/sparql?query=' + encodeURIComponent(sparql) + '&format=json';
+    const res  = await fetch(url, { headers: { Accept: 'application/sparql-results+json' } });
+    if (!res.ok) throw new Error(`SPARQL ${res.status}`);
+    const data = await res.json();
+
+    return data.results.bindings.map(b => {
+      const coords = b.coordinates.value.match(/Point\(([^ ]+) ([^ )]+)\)/);
+      return {
+        qid:   b.place.value.split('/').pop(),
+        label: b.placeLabel.value,
+        lat:   parseFloat(coords[2]),
+        lng:   parseFloat(coords[1]),
+      };
+    }).filter(d => !isNaN(d.lat));
+  }
+
+  function _renderOSMMissingLayer(items) {
+    if (_osmMissingLayer) map.removeLayer(_osmMissingLayer);
+    _osmMissingLayer = L.layerGroup();
+
+    const icon = L.circleMarker; // kullan
+    items.forEach(item => {
+      const marker = L.circleMarker([item.lat, item.lng], {
+        radius: 7,
+        fillColor: '#8e44ad',
+        color: '#6c3483',
+        weight: 1.5,
+        opacity: 1,
+        fillOpacity: 0.85,
+      });
+
+      marker.bindTooltip(`<strong>${item.label}</strong><br><span style="color:#8e44ad">${item.qid}</span>`, { direction: 'top' });
+
+      marker.on('click', () => {
+        _activeQID    = item.qid;
+        _activeKEItem = { lat: item.lat, lng: item.lng, i: null, n: item.label };
+
+        // Info paneli açık değilse aç
+        const panel = document.getElementById('infoPanel');
+        if (panel) {
+          panel.style.display = 'block';
+          panel.innerHTML = `
+            <h2 style="font-size:15px; color:#1a237e; border-bottom:2px solid #3f51b5; padding-bottom:8px; margin-bottom:10px;">
+              ${item.label}
+            </h2>
+            <p style="font-size:12px; color:#555;">
+              <a href="https://www.wikidata.org/wiki/${item.qid}" target="_blank" style="color:#3498db;">${item.qid}</a>
+            </p>`;
+          _injectOSMSection(_activeKEItem, item.qid);
+        }
+      });
+
+      _osmMissingLayer.addLayer(marker);
+    });
+
+    _osmMissingLayer.addTo(map);
+  }
+
+  // ── Stats Paneline Buton Ekle ─────────────────────────────────
+  function _injectOSMMissingButton() {
+    const statsPanel = document.querySelector('.stats-panel');
+    if (!statsPanel || document.getElementById('osmMissingBtn')) return;
+
+    const div = document.createElement('div');
+    div.className = 'stat-item';
+    div.innerHTML = `
+      <button id="osmMissingBtn"
+              onclick="OSM_MODULE.toggleOSMMissingMode()"
+              style="background:linear-gradient(135deg,#8e44ad,#6c3483); color:white; border:none;
+                     padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600;
+                     font-size:12px; transition:transform 0.2s;"
+              onmouseover="this.style.transform='scale(1.05)'"
+              onmouseout="this.style.transform='scale(1)'">
+        OSM Eksik QID
+      </button>`;
+    statsPanel.appendChild(div);
+  }
+
   // ── Bildirim ──────────────────────────────────────────────────
   // app.js'deki mevcut notification box'ı kullan
   function _showNotification(msg, type = 'success') {
@@ -552,6 +676,7 @@ const OSM_MODULE = (() => {
     selectOSMElement,
     confirmAndWrite,
     openTagTransfer,
+    toggleOSMMissingMode,
   };
 
 })();
