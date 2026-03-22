@@ -342,8 +342,7 @@ const OSM_MODULE = (() => {
 
     // Zorunlu tag'ler (her zaman eklenir)
     const requiredTags = {
-      'wikidata':              qid,
-      'ref:kulturenvanteri':   String(keId),
+      'wikidata': qid,
     };
 
     // Önerilen tag'ler: Wikidata'dan gelip OSM'de henüz olmayan
@@ -402,7 +401,7 @@ const OSM_MODULE = (() => {
             Changeset Yorumu:
           </label>
           <input id="osm-changeset-comment"
-                 value="KEHarita: wikidata=${qid}, ref:kulturenvanteri=${keId} eklendi"
+                 value="wikidata ${qid} eklendi"
                  style="width:100%; font-size:11px; padding:5px 8px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box;">
         </div>
 
@@ -434,12 +433,10 @@ const OSM_MODULE = (() => {
     // Seçili önerilen tag'leri topla
     const checkboxes = document.querySelectorAll('#osm-suggested-tags input[type=checkbox]:checked');
     const keId       = _activeKEItem?.i || _activeKEItem?.id || '';
-    const comment    = document.getElementById('osm-changeset-comment')?.value
-                       || `KEHarita: wikidata=${qid}, ref:kulturenvanteri=${keId}`;
+    const comment    = `wikidata ${qid} eklendi`;
 
     const tagsToAdd = {
-      'wikidata':            qid,
-      'ref:kulturenvanteri': String(keId),
+      'wikidata': qid,
     };
 
     checkboxes.forEach(cb => {
