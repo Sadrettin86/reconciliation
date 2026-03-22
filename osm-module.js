@@ -27,7 +27,19 @@ const OSM_MODULE = (() => {
         _activeKEItem  = item;
         _activeQID     = null;
         _selectedOSMEl = null;
-        _injectOSMSection(item, null);
+
+        // Zaten eşleşmiş nokta mı? Firebase'den QID'yi oku
+        const keId = item.i || item.id;
+        try {
+          firebase.database().ref('matches/' + keId).once('value').then(snap => {
+            const match = snap.val();
+            const qid   = match ? match.qid : null;
+            _activeQID  = qid;
+            _injectOSMSection(item, qid);
+          });
+        } catch (e) {
+          _injectOSMSection(item, null);
+        }
       };
     }
 
