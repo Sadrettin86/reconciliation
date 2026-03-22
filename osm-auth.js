@@ -9,7 +9,7 @@
 const OSM_AUTH = (() => {
 
   const CONFIG = {
-    clientId:    'fjnwUVmRp5E_NC4abf7IsW2nSInyPIIIuII8j9UXdQ',
+    clientId:    'mfjnwUVmRp5E_NC4abf7IsW2nSInyPIIIuII8j9UXdQ',
     authUrl:     'https://www.openstreetmap.org/oauth2/authorize',
     redirectUri: 'https://keharita.app/osm-callback',
     scope:       'read_prefs write_api',
