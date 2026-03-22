@@ -605,7 +605,7 @@ SELECT ?place ?placeLabel ?coordinates WHERE {
         _activeQID    = item.qid;
         _activeKEItem = { lat: item.lat, lng: item.lng, i: null, n: item.label };
 
-        // Info paneli açık değilse aç
+        // Paneli aç ve hemen Overpass aramasını başlat
         const panel = document.getElementById('infoPanel');
         if (panel) {
           panel.style.display = 'block';
@@ -613,10 +613,11 @@ SELECT ?place ?placeLabel ?coordinates WHERE {
             <h2 style="font-size:15px; color:#1a237e; border-bottom:2px solid #3f51b5; padding-bottom:8px; margin-bottom:10px;">
               ${item.label}
             </h2>
-            <p style="font-size:12px; color:#555;">
+            <p style="font-size:12px; color:#555; margin-bottom:8px;">
               <a href="https://www.wikidata.org/wiki/${item.qid}" target="_blank" style="color:#3498db;">${item.qid}</a>
-            </p>`;
-          _injectOSMSection(_activeKEItem, item.qid);
+            </p>
+            <div id="osm-section"></div>`;
+          searchNearbyOSM(item.qid, item.lat, item.lng);
         }
       });
 
