@@ -559,14 +559,15 @@ SELECT ?place ?placeLabel ?coordinates WHERE {
     const data = await res.json();
 
     return data.results.bindings.map(b => {
-      const coords = b.coordinates.value.match(/Point\(([^ ]+) ([^ )]+)\)/);
+      const coords = b.coordinates?.value?.match(/Point\(([^ ]+) ([^ )]+)\)/);
+      if (!coords) return null;
       return {
         qid:   b.place.value.split('/').pop(),
         label: b.placeLabel.value,
         lat:   parseFloat(coords[2]),
         lng:   parseFloat(coords[1]),
       };
-    }).filter(d => !isNaN(d.lat));
+    }).filter(d => d && !isNaN(d.lat));
   }
 
   function _renderOSMMissingLayer(items) {
