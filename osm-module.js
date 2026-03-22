@@ -436,7 +436,7 @@ const OSM_MODULE = (() => {
 
     // UI: yükleniyor
     const section = document.getElementById('osm-section');
-    if (section) section.innerHTML = _loadingHTML('OSM ve Wikidata'ya yazılıyor…');
+    if (section) section.innerHTML = _loadingHTML('OSM ve Wikidata\u2019ya yazılıyor\u2026');
 
     const errors = [];
 
