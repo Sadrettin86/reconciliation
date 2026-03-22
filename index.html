@@ -662,6 +662,17 @@
             </button>
         </div>
         <div class="stat-item">
+            <button id="osmLoginButton"
+                    style="background:linear-gradient(135deg,#e67e22 0%,#ca6f1e 100%); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; font-size:12px; display:flex; align-items:center; gap:6px; transition:transform 0.2s;"
+                    onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"
+                    onclick="OSM_AUTH.login()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+                OSM Girişi
+            </button>
+        </div>
+        <div class="stat-item">
             <button id="loginButton" onclick="handleLogin()" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
@@ -682,6 +693,10 @@
         <div class="legend-item">
             <div class="legend-color" style="background: #f1c40f;"></div>
             <span>Wikidata QID</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #27ae60;"></div>
+            <span>Wikidata + OSM bağlı</span>
         </div>
     </div>
     
@@ -757,5 +772,10 @@
     
     <!-- Main App -->
     <script src="app.js"></script>
+
+    <!-- OSM Entegrasyonu -->
+    <script src="osm-auth.js"></script>
+    <script src="osm-api.js"></script>
+    <script src="osm-module.js"></script>
 </body>
 </html>
