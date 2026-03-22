@@ -587,7 +587,8 @@ SELECT ?place ?placeLabel ?coordinates WHERE {
 
       marker.bindTooltip(`<strong>${item.label}</strong><br><span style="color:#8e44ad">${item.qid}</span>`, { direction: 'top' });
 
-      marker.on('click', () => {
+      marker.on('click', (e) => {
+        L.DomEvent.stopPropagation(e);
         _activeQID    = item.qid;
         _activeKEItem = { lat: item.lat, lng: item.lng, i: null, n: item.label };
 
