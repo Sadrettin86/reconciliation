@@ -518,6 +518,20 @@ const OSM_MODULE = (() => {
     setTimeout(() => { box.style.display = 'none'; }, 4000);
   }
 
+  // ── Altlık Haritayı OSM Standart ile Değiştir ────────────────
+  function _switchToOSMTiles() {
+    if (typeof map === 'undefined') return;
+    // Mevcut tile katmanlarını kaldır
+    map.eachLayer(layer => {
+      if (layer instanceof L.TileLayer) map.removeLayer(layer);
+    });
+    // Klasik OSM altlığı ekle
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> katkıda bulunanlar',
+      maxZoom: 19,
+    }).addTo(map);
+  }
+
   // ── Başlat ────────────────────────────────────────────────────
   function init() {
     // app.js tamamen yüklendikten sonra hook'ları kur
@@ -527,6 +541,8 @@ const OSM_MODULE = (() => {
       // DOMContentLoaded zaten geçtiyse biraz bekle (app.js'nin bitmesi için)
       setTimeout(hookIntoApp, 200);
     }
+    // Harita hazır olunca tile katmanını değiştir
+    setTimeout(_switchToOSMTiles, 500);
   }
 
   // ── Public API ────────────────────────────────────────────────
