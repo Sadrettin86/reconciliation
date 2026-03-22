@@ -59,12 +59,24 @@ const OSM_MODULE = (() => {
       };
     }
 
-    // 3) Wikimedia token'ı periyodik olarak yakala
+    // 3) Wikimedia token'ı yakala + login butonuna kullanıcı adı yaz
     setInterval(() => {
       if (typeof currentUser !== 'undefined' && currentUser?.accessToken) {
         _wikidataToken = currentUser.accessToken;
+
+        const btn = document.getElementById('loginButton');
+        if (btn && currentUser.username && !btn.dataset.wmLabeled) {
+          btn.dataset.wmLabeled = '1';
+          btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+              <polyline points="10 17 15 12 10 7"></polyline>
+              <line x1="15" y1="12" x2="3" y2="12"></line>
+            </svg>
+            wikimedia:${currentUser.username}`;
+        }
       }
-    }, 3000);
+    }, 1000);
   }
 
   // ── Info Panel'e OSM Bölümü Ekle ────────────────────────────
