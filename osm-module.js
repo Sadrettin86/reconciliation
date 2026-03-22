@@ -13,8 +13,9 @@ const OSM_MODULE = (() => {
   let _selectedOSMEl   = null;
   let _wikidataToken   = null;
   let _overpassCache   = {};
-  let _osmMissingLayer = null;   // OSM eksik QID marker katmanı
-  let _osmMissingMode  = false;  // mod aktif mi
+  let _osmMissingLayer = null;
+  let _osmMissingMode  = false;
+  let _osmElementStore = {};     // {type-id: element} onclick için veri deposu
   const CACHE_TTL_MS   = 5 * 60 * 1000;
 
   // ── app.js Fonksiyonlarını Sar ────────────────────────────────
@@ -255,16 +256,23 @@ const OSM_MODULE = (() => {
   }
 
   function _buildOSMListHTML(qid, lat, lng, results) {
+    // Elemanları depoya kaydet (onclick'te JSON sorunu yaşamamak için)
+    _osmElementStore = {};
+    results.slice(0, 10).forEach(el => {
+      _osmElementStore[`${el.type}-${el.id}`] = el;
+    });
+
     const items = results.slice(0, 10).map(el => {
       const typeLabel = OSM_API.osmTypeLabel(el.type);
       const name      = el.tags.name || '—';
       const dist      = el.distance  ? `${el.distance}m` : '?';
+      const storeKey  = `${el.type}-${el.id}`;
       const wdBadge   = el.hasWikidata
         ? `<span style="font-size:10px; background:#fff3cd; color:#856404; border-radius:3px; padding:1px 5px; margin-left:4px;">wikidata: ${el.wikidataTag}</span>`
         : '';
 
       return `
-        <div onclick="OSM_MODULE.selectOSMElement('${qid}', ${JSON.stringify(el).replace(/'/g,"\\'")})"
+        <div onclick="OSM_MODULE.selectOSMElement('${qid}', '${storeKey}')"
              style="padding:7px 9px; margin:3px 0; background:#f8f9fa; border-radius:5px; cursor:pointer;
                     border:2px solid transparent; font-size:12px; transition:border-color 0.15s;"
              onmouseover="this.style.borderColor='#3498db'"
@@ -298,7 +306,12 @@ const OSM_MODULE = (() => {
   }
 
   // ── OSM Elemanı Seç → Önizleme ────────────────────────────────
-  async function selectOSMElement(qid, element) {
+  // element: depodaki key string'i veya doğrudan obje
+  async function selectOSMElement(qid, elementOrKey) {
+    const element = (typeof elementOrKey === 'string')
+      ? _osmElementStore[elementOrKey]
+      : elementOrKey;
+    if (!element) return;
     _selectedOSMEl = element;
     const section  = document.getElementById('osm-section');
     if (!section) return;
