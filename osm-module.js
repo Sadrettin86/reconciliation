@@ -275,8 +275,8 @@ const OSM_MODULE = (() => {
         <div onclick="OSM_MODULE.selectOSMElement('${qid}', '${storeKey}')"
              style="padding:7px 9px; margin:3px 0; background:#f8f9fa; border-radius:5px; cursor:pointer;
                     border:2px solid transparent; font-size:12px; transition:all 0.15s;"
-             onmouseover="this.style.borderColor='#3498db';this.style.background='#ebf5fb';this.style.boxShadow='0 2px 6px rgba(52,152,219,0.25)'"
-             onmouseout="this.style.borderColor='transparent';this.style.background='#f8f9fa';this.style.boxShadow='none'"
+             onmouseenter="this.style.borderColor='#3498db';this.style.background='#ebf5fb';this.style.boxShadow='0 2px 6px rgba(52,152,219,0.25)'"
+             onmouseleave="this.style.borderColor='transparent';this.style.background='#f8f9fa';this.style.boxShadow='none'"
              id="osm-el-${el.type}-${el.id}">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-weight:600; color:#2c3e50;">${name}${wdBadge}</span>
