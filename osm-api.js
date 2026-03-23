@@ -22,22 +22,11 @@ const OSM_API = (() => {
   async function findNearbyElements(lat, lng, radiusMeters) {
     const r = radiusMeters;
     const query = `
-[out:json][timeout:25];
+[out:json][timeout:30];
 (
-  node["name"](around:${r},${lat},${lng});
-  node["historic"](around:${r},${lat},${lng});
-  node["tourism"](around:${r},${lat},${lng});
-  node["amenity"](around:${r},${lat},${lng});
-  node["building"](around:${r},${lat},${lng});
-  way["name"](around:${r},${lat},${lng});
-  way["historic"](around:${r},${lat},${lng});
-  way["tourism"](around:${r},${lat},${lng});
-  way["amenity"](around:${r},${lat},${lng});
-  way["building"](around:${r},${lat},${lng});
-  relation["name"](around:${r},${lat},${lng});
-  relation["historic"](around:${r},${lat},${lng});
-  relation["tourism"](around:${r},${lat},${lng});
-  relation["building"](around:${r},${lat},${lng});
+  node(around:${r},${lat},${lng});
+  way(around:${r},${lat},${lng});
+  relation(around:${r},${lat},${lng});
 );
 out body center;
 >;
