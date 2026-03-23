@@ -474,12 +474,18 @@ const OSM_MODULE = (() => {
 
         if (existing) {
           const isSame = String(existing) === String(_selectedOSMEl.id);
-          const msg = isSame
-            ? `Wikidata'da bu eleman için zaten aynı değer kayıtlı:\n${_selectedOSMEl.type} #${existing}\n\nYine de eklensin mi?`
-            : `Wikidata'da bu eleman için zaten farklı bir değer var:\n${_selectedOSMEl.type} #${existing}\n\nYerine ${_selectedOSMEl.id} eklensin mi?`;
-
+          if (isSame) {
+            // Aynı değer — ekleme, bildir
+            _showNotification('ℹ️ Wikidata\'da bu değer zaten kayıtlı, atlandı.', 'info');
+            if (errors.length === 0) {
+              const osmStatus2 = { [_selectedOSMEl.type]: String(_selectedOSMEl.id) };
+              if (section) section.innerHTML = _osmLinkedHTML(qid, _selectedOSMEl.type, _selectedOSMEl.id, osmStatus2);
+            }
+            return;
+          }
+          // Farklı değer — kullanıcıya sor
+          const msg = `Wikidata'da bu eleman için zaten farklı bir değer var:\n${_selectedOSMEl.type} #${existing}\n\nYerine ${_selectedOSMEl.id} eklensin mi?`;
           if (!confirm(msg)) {
-            // Kullanıcı iptal etti, sadece OSM sonucunu göster
             if (errors.length === 0) {
               _showNotification('✅ OSM güncellendi (Wikidata atlandı)', 'success');
               const osmStatus2 = { [_selectedOSMEl.type]: String(_selectedOSMEl.id) };
