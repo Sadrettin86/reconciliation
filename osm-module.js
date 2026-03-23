@@ -242,7 +242,7 @@ const OSM_MODULE = (() => {
       section.innerHTML = `
         <div>
           <div style="font-size:12px; color:#7f8c8d; margin-bottom:8px;">
-            ${radius}m içinde isimli OSM elemanı bulunamadı.
+            ${radius}m içinde OSM elemanı bulunamadı.
           </div>
           <button onclick="OSM_MODULE.searchNearbyOSM('${qid}', ${lat}, ${lng})"
                   style="font-size:11px; background:#ecf0f1; color:#555; border:1px solid #ddd; padding:5px 10px; border-radius:4px; cursor:pointer;">
@@ -264,7 +264,7 @@ const OSM_MODULE = (() => {
 
     const items = results.slice(0, 10).map(el => {
       const typeLabel = OSM_API.osmTypeLabel(el.type);
-      const name      = el.tags.name || '—';
+      const name      = el.tags.name || '<i style="color:#aaa;font-size:11px;">isimsiz</i>';
       const dist      = el.distance  ? `${el.distance}m` : '?';
       const storeKey  = `${el.type}-${el.id}`;
       const wdBadge   = el.hasWikidata
@@ -274,9 +274,9 @@ const OSM_MODULE = (() => {
       return `
         <div onclick="OSM_MODULE.selectOSMElement('${qid}', '${storeKey}')"
              style="padding:7px 9px; margin:3px 0; background:#f8f9fa; border-radius:5px; cursor:pointer;
-                    border:2px solid transparent; font-size:12px; transition:border-color 0.15s;"
-             onmouseover="this.style.borderColor='#3498db'"
-             onmouseout="this.style.borderColor='transparent'"
+                    border:2px solid transparent; font-size:12px; transition:all 0.15s;"
+             onmouseover="this.style.borderColor='#3498db';this.style.background='#ebf5fb';this.style.boxShadow='0 2px 6px rgba(52,152,219,0.25)'"
+             onmouseout="this.style.borderColor='transparent';this.style.background='#f8f9fa';this.style.boxShadow='none'"
              id="osm-el-${el.type}-${el.id}">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-weight:600; color:#2c3e50;">${name}${wdBadge}</span>
@@ -557,6 +557,7 @@ const OSM_MODULE = (() => {
 SELECT ?place ?placeLabel ?coordinates WHERE {
   ?place wdt:P11729 ?keID.
   ?place wdt:P625 ?coordinates.
+  ?place wdt:P17 wd:Q43.
   FILTER NOT EXISTS { ?place wdt:P10689 ?w. }
   FILTER NOT EXISTS { ?place wdt:P402  ?r. }
   FILTER NOT EXISTS { ?place wdt:P11693 ?n. }

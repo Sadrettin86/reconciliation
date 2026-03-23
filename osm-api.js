@@ -24,9 +24,9 @@ const OSM_API = (() => {
     const query = `
 [out:json][timeout:15];
 (
-  node["name"](around:${r},${lat},${lng});
-  way["name"](around:${r},${lat},${lng});
-  relation["name"](around:${r},${lat},${lng});
+  node(around:${r},${lat},${lng});
+  way(around:${r},${lat},${lng});
+  relation(around:${r},${lat},${lng});
 );
 out body;
 >;
@@ -48,9 +48,9 @@ out skel qt;
       if (el.type === 'node') nodeCoords[el.id] = { lat: el.lat, lon: el.lon };
     }
 
-    // Sadece isimli elemanları döndür, merkez koordinatı ekle
+    // Tüm elemanları döndür (isimsizler dahil), merkez koordinatı ekle
     return data.elements
-      .filter(el => el.tags && el.tags.name)
+      .filter(el => el.tags)
       .map(el => {
         let center = null;
         if (el.type === 'node') {
