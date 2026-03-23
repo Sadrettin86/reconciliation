@@ -16,6 +16,8 @@ const OSM_MODULE = (() => {
   let _osmMissingLayer = null;
   let _osmMissingMode  = false;
   let _osmElementStore = {};     // {type-id: element} onclick için veri deposu
+  let _osmResultsLayer = null;   // Arama sonuçlarının harita katmanı
+  let _osmLayerMap     = {};     // {type-id: L.layer}
   const CACHE_TTL_MS   = 5 * 60 * 1000;
 
   // ── app.js Fonksiyonlarını Sar ────────────────────────────────
@@ -30,6 +32,8 @@ const OSM_MODULE = (() => {
         _activeKEItem  = item;
         _activeQID     = null;
         _selectedOSMEl = null;
+        // Önceki arama katmanını temizle
+        if (_osmResultsLayer) { map.removeLayer(_osmResultsLayer); _osmResultsLayer = null; _osmLayerMap = {}; }
 
         // Zaten eşleşmiş nokta mı? Firebase'den QID'yi oku
         const keId = item.i || item.id;
@@ -277,6 +281,69 @@ const OSM_MODULE = (() => {
     }
 
     section.innerHTML = _buildOSMListHTML(qid, lat, lng, results);
+    _renderOSMResultsOnMap(results);
+    _attachResultHoverEvents();
+  }
+
+  // ── Arama Sonuçlarını Haritada Çiz ───────────────────────────
+  function _renderOSMResultsOnMap(results) {
+    if (_osmResultsLayer) { map.removeLayer(_osmResultsLayer); }
+    _osmResultsLayer = L.layerGroup();
+    _osmLayerMap = {};
+
+    results.slice(0, 10).forEach(el => {
+      const key = `${el.type}-${el.id}`;
+      let layer;
+
+      if (el.type === 'node') {
+        layer = L.circleMarker([el.center.lat, el.center.lon], {
+          radius: 7, color: '#e67e22', fillColor: '#f39c12',
+          weight: 2, fillOpacity: 0.5,
+        });
+      } else if (el.type === 'way' && el.latlngs && el.latlngs.length > 1) {
+        const isPolygon = el.latlngs.length > 2 &&
+          el.latlngs[0][0] === el.latlngs[el.latlngs.length - 1][0] &&
+          el.latlngs[0][1] === el.latlngs[el.latlngs.length - 1][1];
+        layer = isPolygon
+          ? L.polygon(el.latlngs, { color: '#e67e22', fillColor: '#f39c12', weight: 2, fillOpacity: 0.2 })
+          : L.polyline(el.latlngs, { color: '#e67e22', weight: 3 });
+      } else if (el.center) {
+        layer = L.circleMarker([el.center.lat, el.center.lon], {
+          radius: 7, color: '#e67e22', fillColor: '#f39c12',
+          weight: 2, fillOpacity: 0.5,
+        });
+      }
+
+      if (layer) {
+        _osmLayerMap[key] = layer;
+        _osmResultsLayer.addLayer(layer);
+      }
+    });
+
+    _osmResultsLayer.addTo(map);
+  }
+
+  function _attachResultHoverEvents() {
+    document.querySelectorAll('.osm-result-item').forEach(div => {
+      const key = div.id.replace('osm-el-', '');
+      div.addEventListener('mouseenter', () => {
+        const layer = _osmLayerMap[key];
+        if (!layer) return;
+        if (layer.setStyle) {
+          layer.setStyle({ color: '#e74c3c', fillColor: '#e74c3c', weight: 4, fillOpacity: 0.45 });
+        } else if (layer.setRadius) {
+          layer.setStyle({ color: '#e74c3c', fillColor: '#e74c3c', radius: 10 });
+        }
+        if (layer.bringToFront) layer.bringToFront();
+      });
+      div.addEventListener('mouseleave', () => {
+        const layer = _osmLayerMap[key];
+        if (!layer) return;
+        if (layer.setStyle) {
+          layer.setStyle({ color: '#e67e22', fillColor: '#f39c12', weight: 2, fillOpacity: 0.2 });
+        }
+      });
+    });
   }
 
   function _buildOSMListHTML(qid, lat, lng, results) {

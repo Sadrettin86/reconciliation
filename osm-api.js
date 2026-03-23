@@ -67,12 +67,18 @@ out skel qt;
           ? haversineMeters(lat, lng, center.lat, center.lon)
           : null;
 
+        // Way geometrisini node koordinatlarından oluştur
+        const latlngs = (el.type === 'way' && el.nodes)
+          ? el.nodes.map(nid => nodeCoords[nid]).filter(Boolean).map(nc => [nc.lat, nc.lon])
+          : null;
+
         return {
           type:     el.type,
           id:       el.id,
           tags:     el.tags || {},
           center,
           distance,
+          latlngs,
           hasWikidata: !!el.tags?.wikidata,
           wikidataTag: el.tags?.wikidata || null,
         };
