@@ -467,6 +467,28 @@ const OSM_MODULE = (() => {
     // 2) Wikidata'ya OSM ID ekle
     if (_wikidataToken) {
       try {
+        // Mevcut değer var mı kontrol et
+        const osmStatus = await OSM_API.checkWikidataOSMStatus(qid);
+        const propMap   = { node: 'osmNode', way: 'osmWay', relation: 'osmRel' };
+        const existing  = osmStatus[propMap[_selectedOSMEl.type]];
+
+        if (existing) {
+          const isSame = String(existing) === String(_selectedOSMEl.id);
+          const msg = isSame
+            ? `Wikidata'da bu eleman için zaten aynı değer kayıtlı:\n${_selectedOSMEl.type} #${existing}\n\nYine de eklensin mi?`
+            : `Wikidata'da bu eleman için zaten farklı bir değer var:\n${_selectedOSMEl.type} #${existing}\n\nYerine ${_selectedOSMEl.id} eklensin mi?`;
+
+          if (!confirm(msg)) {
+            // Kullanıcı iptal etti, sadece OSM sonucunu göster
+            if (errors.length === 0) {
+              _showNotification('✅ OSM güncellendi (Wikidata atlandı)', 'success');
+              const osmStatus2 = { [_selectedOSMEl.type]: String(_selectedOSMEl.id) };
+              if (section) section.innerHTML = _osmLinkedHTML(qid, _selectedOSMEl.type, _selectedOSMEl.id, osmStatus2);
+            }
+            return;
+          }
+        }
+
         await OSM_API.addOSMPropertyToWikidata({
           qid,
           osmType:        _selectedOSMEl.type,
