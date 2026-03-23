@@ -65,6 +65,30 @@ const OSM_MODULE = (() => {
     // 3) Buton enjekte et
     _injectOSMMissingButton();
 
+    // 4) Hover CSS'i ekle
+    if (!document.getElementById('osm-module-style')) {
+      const style = document.createElement('style');
+      style.id = 'osm-module-style';
+      style.textContent = `
+        .osm-result-item {
+          padding: 7px 9px;
+          margin: 3px 0;
+          background: #f8f9fa;
+          border-radius: 5px;
+          cursor: pointer;
+          border: 2px solid transparent;
+          font-size: 12px;
+          transition: all 0.15s;
+        }
+        .osm-result-item:hover {
+          border-color: #3498db;
+          background: #ebf5fb;
+          box-shadow: 0 2px 8px rgba(52,152,219,0.3);
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     // 4) Wikimedia token'ı yakala + login butonuna kullanıcı adı yaz
     setInterval(() => {
       if (typeof currentUser !== 'undefined' && currentUser?.accessToken) {
@@ -272,11 +296,8 @@ const OSM_MODULE = (() => {
         : '';
 
       return `
-        <div onclick="OSM_MODULE.selectOSMElement('${qid}', '${storeKey}')"
-             style="padding:7px 9px; margin:3px 0; background:#f8f9fa; border-radius:5px; cursor:pointer;
-                    border:2px solid transparent; font-size:12px; transition:all 0.15s;"
-             onmouseenter="this.style.borderColor='#3498db';this.style.background='#ebf5fb';this.style.boxShadow='0 2px 6px rgba(52,152,219,0.25)'"
-             onmouseleave="this.style.borderColor='transparent';this.style.background='#f8f9fa';this.style.boxShadow='none'"
+        <div class="osm-result-item"
+             onclick="OSM_MODULE.selectOSMElement('${qid}', '${storeKey}')"
              id="osm-el-${el.type}-${el.id}">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-weight:600; color:#2c3e50;">${name}${wdBadge}</span>
